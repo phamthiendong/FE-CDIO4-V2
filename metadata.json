@@ -1,0 +1,5 @@
+{
+  "name": "AI-Powered Online Clinic",
+  "description": "An online clinic platform that allows users to enter their symptoms, get AI-powered suggestions for medical specialties, and find relevant doctors for consultation and booking.",
+  "requestFramePermissions": []
+}
