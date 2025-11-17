@@ -1,3 +1,5 @@
+// Unified and cleaned TypeScript types for the project
+
 export enum Specialty {
   Cardiology = "Cardiology",
   Dermatology = "Dermatology",
@@ -15,40 +17,47 @@ export interface Review {
   comment: string;
 }
 
-export interface Doctor {
-  id: string;
-  userId: string;
-  name: string;
-  specialty: Specialty;
-  experience: number;
-  rating: number;
-  imageUrl: string;
-  consultationFee: number;
-  bio: string;
-  education: string[];
-  certificateUrl?: string;
-  languages: string[];
-  reviews: Review[];
-  schedule?: string[];
-}
-
-export interface SpecialtySuggestion {
-  specialty: string;
-  reason: string;
-  riskLevel: 'Thấp' | 'Trung bình' | 'Cao';
-}
-
+// Single, unified User type (merged fields from both versions)
 export interface User {
   id: string;
   name: string;
-  email: string;
-  role: 'patient' | 'doctor' | 'admin' | 'staff';
-  // Patient Profile fields
+  email?: string;
+  avatar?: string; // optional so both UI and backend shapes work
+  role?: 'patient' | 'doctor' | 'admin' | 'staff';
+
+  // optional patient profile fields
   phone?: string;
   address?: string;
   insuranceNumber?: string;
   medicalHistorySummary?: string;
   relatives?: { id: string; name: string; relationship: string; }[];
+}
+
+// Full Doctor model used across the app
+export interface Doctor {
+  id: string;
+  userId?: string; // optional if you sometimes reference doctor by userId
+  name: string;
+  specialty: Specialty | string;
+  experience?: number;
+  rating?: number;
+  imageUrl?: string;
+  consultationFee?: number;
+  bio?: string;
+  education?: string[];
+  certificateUrl?: string;
+  languages?: string[];
+  reviews?: Review[];
+  schedule?: string[];
+}
+
+// Lightweight doctor shape used in lists/cards (keeps backward compatibility)
+export type LightweightDoctor = Pick<Doctor, 'id' | 'name' | 'specialty' | 'reviews'>;
+
+export interface SpecialtySuggestion {
+  specialty: string;
+  reason: string;
+  riskLevel: 'Thấp' | 'Trung bình' | 'Cao';
 }
 
 export interface Prescription {
@@ -65,25 +74,28 @@ export interface MedicalRecord {
   patientId: string;
   doctorId: string;
   // SOAP notes
-  subjective: string; // What the patient reports
-  objective: string; // Doctor's observations
-  assessment: string; // Diagnosis, ICD-10 codes
-  plan: string; // Treatment plan notes
-  
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
   prescriptions: Prescription[];
-  consultationSummary: string; // AI Summary
+  consultationSummary?: string;
   date: string;
   attachments?: { name: string; url: string; }[];
 }
 
+// Combined Appointment type that supports both backend shapes seen in file
 export interface Appointment {
   id: string;
   patientId: string;
-  doctor: Doctor;
+  doctorId?: string; // keep optional if doctor object is used instead
+  doctor?: Doctor; // some code expects a full doctor object
+  slotId?: string;
   date: string;
   time: string;
-  status: 'Sắp diễn ra' | 'Đã hoàn thành' | 'Đã hủy' | 'Chờ xác nhận' | 'Đã xác nhận';
+  status: 'Sắp diễn ra' | 'Đã hoàn thành' | 'Đã hủy' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Hoàn thành';
   type: 'online' | 'offline';
+  price?: number;
   medicalRecordId?: string;
 }
 
@@ -95,22 +107,22 @@ export interface PendingAppointment {
 }
 
 export interface NewDoctorData {
-    name: string;
-    email: string;
-    specialty: Specialty;
-    experience: number;
-    consultationFee: number;
-    bio: string;
-    education: string;
-    imageUrl: File | null;
-    certificate: File | null;
+  name: string;
+  email: string;
+  specialty: Specialty | string;
+  experience: number;
+  consultationFee: number;
+  bio: string;
+  education: string;
+  imageUrl: File | null;
+  certificate: File | null;
 }
 
 export interface KnowledgeBaseItem {
   id: string;
   symptom: string;
   diagnosis: string;
-  recommendedSpecialty: Specialty;
+  recommendedSpecialty: Specialty | string;
   treatmentSuggestion: string;
 }
 
@@ -123,18 +135,25 @@ export interface LearningRequest {
 
 export type NotificationType = 'appointment' | 'prescription' | 'followUp' | 'aiResult' | 'human_response' | 'admin_alert';
 
+// Unified Notification used by backend + a simpler UI notification alias
 export interface Notification {
   id: string;
-  userId: string;
-  type: NotificationType;
+  userId?: string;
+  type: NotificationType | 'info' | 'warning';
   message: string;
-  timestamp: string;
-  read: boolean;
+  timestamp?: string;
+  read?: boolean;
   relatedId?: string;
 }
 
+export interface UiNotification {
+  id: string;
+  message: string;
+  type: 'info' | 'warning';
+}
+
 export interface Service {
-  specialty: Specialty;
+  specialty: Specialty | string;
   price: number;
 }
 
@@ -153,4 +172,16 @@ export interface RecentActivity {
   type: 'new_user' | 'new_appointment';
   message: string;
   timestamp: string;
+}
+
+export interface TimeSlot {
+  id: string;
+  doctorId: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  maxPatients: number;
+  bookedCount: number;
+  status: 'available' | 'full' | 'cancelled';
+  type: 'online' | 'offline';
 }
