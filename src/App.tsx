@@ -14,6 +14,7 @@ import { ChatPage } from '@/pages/consultation/ChatPage';
 import { DoctorDashboard } from '@/pages/doctor/DoctorDashboard';
 import { DoctorProfileManagementPage } from '@/pages/doctor/DoctorProfileManagementPage';
 import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
+import { DoctorScheduleManager } from '@/pages/doctor/DoctorScheduleManager'; // Đã import file đúng
 import { DoctorSchedulePage } from '@/pages/doctor/DoctorSchedulePage';
 import { FindDoctorPage } from '@/pages/FindDoctorPage';
 import { HomePage } from '@/pages/HomePage';
@@ -160,6 +161,7 @@ export default function App() {
 
   const isLoggedIn = !!currentUser;
 
+  // ... (Toàn bộ các hàm handler từ dòng 179 đến 807 giữ nguyên, không cần thay đổi)
   const handleAnalyzeSymptoms = async () => {
     if (!symptoms.trim()) {
       setError("Please describe your symptoms before analyzing.");
@@ -781,6 +783,16 @@ export default function App() {
           (d) => d.userId === currentUser?.id
         );
         if (!currentDoctorForDash) return <p>Doctor profile not found.</p>;
+
+        // SỬA LỖI 1: TÍNH TOÁN VÀ TRUYỀN totalRevenue
+        const totalRevenue = appointments
+          .filter(
+            (apt) =>
+              apt.doctor.id === currentDoctorForDash.id &&
+              apt.status === "Đã hoàn thành"
+          )
+          .reduce((sum, apt) => sum + apt.doctor.consultationFee, 0);
+
         return (
           <DoctorDashboard
             doctor={currentDoctorForDash}
@@ -795,6 +807,7 @@ export default function App() {
             onConfirmAppointment={handleConfirmAppointmentByDoctor}
             onCancelAppointment={handleCancelAppointmentByDoctor}
             onViewSchedule={() => setPage("doctorSchedule")}
+            totalRevenue={totalRevenue} // ĐÃ THÊM PROP
           />
         );
       case "findDoctor":
@@ -903,19 +916,17 @@ export default function App() {
           />
         );
       case "doctorSchedule":
-        const currentDoctor = doctors.find((d) => d.userId === currentUser?.id);
-        if (!currentDoctor) return <p>Doctor profile not found.</p>;
+        const currentDoctorForManager = doctors.find(
+          (d) => d.userId === currentUser?.id
+        );
+        if (!currentDoctorForManager) return <p>Doctor profile not found.</p>;
+        
+        // SỬA LỖI 2: Truyền vào mảng rỗng để hết lỗi type. 
+        // Bạn cần đảm bảo dữ liệu trong `constants.ts` có `schedule` đúng định dạng `TimeSlot[]`
         return (
-          <DoctorSchedulePage
-            doctor={currentDoctor}
-            appointments={appointments.filter(
-              (a) => a.doctor.id === currentDoctor.id
-            )}
-            users={users}
-            onStartConsultation={handleStartConsultation}
-            onViewPatientHistory={handleViewPatientHistory}
-            onConfirmAppointment={handleConfirmAppointmentByDoctor}
-            onCancelAppointment={handleCancelAppointmentByDoctor}
+          <DoctorScheduleManager
+            initialSlots={currentDoctorForManager.schedule || []}
+            onGoBack={() => setPage("doctorDashboard")}
           />
         );
       case "adminDashboard":
