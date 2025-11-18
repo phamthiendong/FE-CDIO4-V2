@@ -25,7 +25,7 @@ export interface User {
   address?: string;
   insuranceNumber?: string;
   medicalHistorySummary?: string;
-  relatives?: { id: string; name: string; relationship: string; }[];
+  relatives?: { id: string; name: string; relationship: string }[];
 }
 
 export interface Doctor {
@@ -50,7 +50,7 @@ export type LightweightDoctor = Pick<Doctor, 'id' | 'name' | 'specialty' | 'revi
 export interface SpecialtySuggestion {
   specialty: string;
   reason: string;
-  riskLevel: 'Thấp' | 'Trung bình' | 'Cao';
+  riskLevel: "Thấp" | "Trung bình" | "Cao";
 }
 
 export interface Prescription {
@@ -73,7 +73,7 @@ export interface MedicalRecord {
   prescriptions: Prescription[];
   consultationSummary?: string;
   date: string;
-  attachments?: { name: string; url: string; }[];
+  attachments?: { name: string; url: string }[];
 }
 
 export interface Appointment {
@@ -94,7 +94,7 @@ export interface PendingAppointment {
   doctor: Doctor;
   date: string;
   time: string;
-  type: 'online' | 'offline';
+  type: "online" | "offline";
 }
 
 export interface NewDoctorData {
@@ -121,15 +121,21 @@ export interface LearningRequest {
   id: string;
   question: string;
   count: number;
-  status: 'pending' | 'resolved';
+  status: "pending" | "resolved";
 }
 
-export type NotificationType = 'appointment' | 'prescription' | 'followUp' | 'aiResult' | 'human_response' | 'admin_alert';
+export type NotificationType =
+  | "appointment"
+  | "prescription"
+  | "followUp"
+  | "aiResult"
+  | "human_response"
+  | "admin_alert";
 
 export interface Notification {
   id: string;
   userId?: string;
-  type: NotificationType | 'info' | 'warning';
+  type: NotificationType | "info" | "warning";
   message: string;
   timestamp?: string;
   read?: boolean;
@@ -139,7 +145,7 @@ export interface Notification {
 export interface UiNotification {
   id: string;
   message: string;
-  type: 'info' | 'warning';
+  type: "info" | "warning";
 }
 
 export interface Service {
@@ -154,12 +160,12 @@ export interface AiInteractionLog {
   aiResponse: string;
   humanResponse?: string;
   timestamp: string;
-  status: 'answered' | 'needs_human_review';
+  status: "answered" | "needs_human_review";
 }
 
 export interface RecentActivity {
   id: string;
-  type: 'new_user' | 'new_appointment';
+  type: "new_user" | "new_appointment";
   message: string;
   timestamp: string;
 }
