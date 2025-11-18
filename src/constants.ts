@@ -1,7 +1,12 @@
-
-
 import type { Doctor, User, Appointment, KnowledgeBaseItem, LearningRequest, MedicalRecord, Notification, Service, AiInteractionLog, RecentActivity } from './types/types';
 import { Specialty } from './types/types';
+
+// Helper để lấy ngày trong tương lai
+const getFutureDate = (daysToAdd: number): string => {
+  const date = new Date();
+  date.setDate(date.getDate() + daysToAdd);
+  return date.toISOString().split('T')[0]; // Format YYYY-MM-DD
+};
 
 export const INITIAL_DOCTORS: Doctor[] = [
   {
@@ -21,7 +26,12 @@ export const INITIAL_DOCTORS: Doctor[] = [
       { id: 'rev1', author: 'An Nguyen', rating: 5, comment: 'Dr. Reed was very thorough and explained everything clearly. Highly recommended.' },
       { id: 'rev2', author: 'Binh Tran', rating: 4.8, comment: 'Excellent doctor, very knowledgeable.' },
     ],
-    schedule: ['09:00', '09:30', '10:00', '10:30', '11:00', '14:00', '14:30', '15:00'],
+    // ========== SỬA LẠI HOÀN TOÀN PHẦN NÀY ==========
+    schedule: [
+      { id: 'ts1-1', doctorId: 'doc1', date: getFutureDate(1), startTime: '09:00', endTime: '09:30', maxPatients: 1, bookedCount: 0, status: 'available', type: 'online' },
+      { id: 'ts1-2', doctorId: 'doc1', date: getFutureDate(1), startTime: '09:30', endTime: '10:00', maxPatients: 1, bookedCount: 1, status: 'available', type: 'offline' },
+      { id: 'ts1-3', doctorId: 'doc1', date: getFutureDate(2), startTime: '14:00', endTime: '14:30', maxPatients: 2, bookedCount: 0, status: 'available', type: 'online' },
+    ],
   },
   {
     id: 'doc2',
@@ -39,7 +49,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     reviews: [
       { id: 'rev3', author: 'Chi Pham', rating: 5, comment: 'My skin has never looked better! Thank you, Dr. Chen.' },
     ],
-    schedule: ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'],
+    schedule: [
+      { id: 'ts2-1', doctorId: 'doc2', date: getFutureDate(1), startTime: '09:00', endTime: '09:30', maxPatients: 1, bookedCount: 0, status: 'available', type: 'offline' },
+    ],
   },
   {
     id: 'doc3',
@@ -58,8 +70,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
         { id: 'rev4', author: 'Dung Le', rating: 5, comment: 'Dr. Garcia is amazing with kids. She is patient and kind.' },
         { id: 'rev5', author: 'Edison Vu', rating: 5, comment: 'The best pediatrician we have ever had.' },
     ],
-    schedule: ['08:30', '09:30', '10:30', '11:30', '13:30', '14:30', '15:30'],
+    schedule: [], // Bác sĩ này chưa có lịch, để mảng rỗng
   },
+  // ... Các bác sĩ khác cũng cần được cập nhật tương tự hoặc để schedule: []
   {
     id: 'doc4',
     userId: 'user-doc4',
@@ -74,7 +87,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     certificateUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     languages: ['Vietnamese', 'English'],
     reviews: [],
-    schedule: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00'],
+    schedule: [],
   },
   {
     id: 'doc5',
@@ -92,7 +105,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     reviews: [
         { id: 'rev6', author: 'Phuong Mai', rating: 5, comment: 'My knee surgery went perfectly. Dr. Khan is a fantastic surgeon.' },
     ],
-    schedule: ['09:00', '10:00', '11:00', '14:00', '15:00'],
+    schedule: [],
   },
   {
     id: 'doc6',
@@ -108,7 +121,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     certificateUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     languages: ['Vietnamese', 'English', 'Spanish'],
     reviews: [],
-    schedule: ['09:00', '10:00', '14:00', '15:00', '16:00'],
+    schedule: [],
   },
   {
     id: 'doc7',
@@ -124,7 +137,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     certificateUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     languages: ['Vietnamese', 'English'],
     reviews: [],
-    schedule: ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00'],
+    schedule: [],
   },
    {
     id: 'doc8',
@@ -142,10 +155,11 @@ export const INITIAL_DOCTORS: Doctor[] = [
     reviews: [
         { id: 'rev7', author: 'Huy Hoang', rating: 5, comment: 'Dr. Tanaka saved my life. An incredible doctor with immense knowledge.' },
     ],
-    schedule: ['09:00', '10:00', '11:00', '14:00'],
+    schedule: [],
   },
 ];
 
+// PHẦN CÒN LẠI CỦA FILE GIỮ NGUYÊN
 export const USERS: User[] = [
   { 
     id: 'user-patient1', 
@@ -178,7 +192,7 @@ export const APPOINTMENTS: Appointment[] = [
         id: 'apt1',
         patientId: 'user-patient1',
         doctor: INITIAL_DOCTORS[0],
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN'), // 2 days ago
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days ago
         time: '10:00',
         status: 'Đã hoàn thành',
         type: 'online',
@@ -188,7 +202,7 @@ export const APPOINTMENTS: Appointment[] = [
         id: 'apt2',
         patientId: 'user-patient1',
         doctor: INITIAL_DOCTORS[2],
-        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN'), // In 2 days
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // In 2 days
         time: '14:30',
         status: 'Đã xác nhận',
         type: 'online',
@@ -197,7 +211,7 @@ export const APPOINTMENTS: Appointment[] = [
         id: 'apt3',
         patientId: 'user-patient1',
         doctor: INITIAL_DOCTORS[1],
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN'), // In 3 days
+        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // In 3 days
         time: '09:00',
         status: 'Chờ xác nhận',
         type: 'offline',
@@ -206,7 +220,7 @@ export const APPOINTMENTS: Appointment[] = [
         id: 'apt4',
         patientId: 'user-patient1',
         doctor: INITIAL_DOCTORS[3], // Dr. Ben Carter
-        date: new Date().toLocaleDateString('vi-VN'), // Today
+        date: new Date().toISOString().split('T')[0], // Today
         time: '10:00',
         status: 'Đã xác nhận',
         type: 'online',
@@ -215,7 +229,7 @@ export const APPOINTMENTS: Appointment[] = [
         id: 'apt5',
         patientId: 'user-patient1',
         doctor: INITIAL_DOCTORS[4], // Dr. Aisha Khan
-        date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN'), // Tomorrow
+        date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Tomorrow
         time: '11:00',
         status: 'Chờ xác nhận',
         type: 'offline',
@@ -224,7 +238,7 @@ export const APPOINTMENTS: Appointment[] = [
         id: 'apt6',
         patientId: 'user-patient1',
         doctor: INITIAL_DOCTORS[0], // Dr. Evelyn Reed
-        date: new Date().toLocaleDateString('vi-VN'), // Today
+        date: new Date().toISOString().split('T')[0], // Today
         time: '09:00',
         status: 'Đã hoàn thành',
         type: 'online',
@@ -238,7 +252,7 @@ export const MEDICAL_RECORDS: MedicalRecord[] = [
     appointmentId: 'apt1',
     patientId: 'user-patient1',
     doctorId: 'doc1',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN'),
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     consultationSummary: '**Triệu chứng đã thảo luận**: Đau họng, sốt nhẹ.\n**Chẩn đoán sơ bộ của bác sĩ**: Viêm họng cấp.\n**Các bước tiếp theo được đề xuất**: Nghỉ ngơi, uống nhiều nước, dùng viên ngậm.',
     subjective: 'Bệnh nhân than phiền đau họng 2 ngày nay, kèm sốt nhẹ, mệt mỏi.',
     objective: 'Niêm mạc họng đỏ, amidan sưng to, không có giả mạc. Thân nhiệt 37.8°C.',
@@ -257,7 +271,7 @@ export const MEDICAL_RECORDS: MedicalRecord[] = [
     appointmentId: 'apt6',
     patientId: 'user-patient1',
     doctorId: 'doc1',
-    date: new Date().toLocaleDateString('vi-VN'),
+    date: new Date().toISOString().split('T')[0],
     consultationSummary: '**Triệu chứng đã thảo luận**: Tim đập nhanh, hồi hộp.\n**Chẩn đoán sơ bộ của bác sĩ**: Rối loạn nhịp tim.\n**Các bước tiếp theo được đề xuất**: Đo điện tâm đồ (ECG).',
     subjective: 'Bệnh nhân cảm thấy hồi hộp, tim đập nhanh không rõ nguyên nhân trong 1 tuần nay.',
     objective: 'Mạch 110 lần/phút, huyết áp 130/80 mmHg. Tim đều, không có tiếng thổi bất thường.',
@@ -266,7 +280,6 @@ export const MEDICAL_RECORDS: MedicalRecord[] = [
     prescriptions: [],
   }
 ];
-
 
 export const KNOWLEDGE_BASE: KnowledgeBaseItem[] = [
     { id: 'kb1', symptom: 'Đau đầu, buồn nôn, nhạy cảm ánh sáng', diagnosis: 'Đau nửa đầu (Migraine)', recommendedSpecialty: Specialty.Neurology, treatmentSuggestion: 'Nghỉ ngơi trong phòng tối, yên tĩnh. Uống thuốc giảm đau không kê đơn. Nếu triệu chứng không cải thiện, hãy tham khảo ý kiến bác sĩ.' },
