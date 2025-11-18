@@ -28,12 +28,22 @@ interface DoctorScheduleManagerProps {
   onGoBack: () => void;
 }
 
-const AddSlotModal: React.FC<{
+// ========== SỬA LẠI TYPE Ở ĐÂY ==========
+interface AddSlotModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddSlot: (slot: Omit<TimeSlot, 'id' | 'doctorId' | 'bookedCount' | 'status'>) => void;
+  onAddSlot: (slot: {
+    date: string;
+    startTime: string; // Bắt buộc phải có startTime
+    endTime: string;
+    maxPatients: number;
+    type: 'online' | 'offline';
+  }) => void;
   selectedDate: Date;
-}> = ({ isOpen, onClose, onAddSlot, selectedDate }) => {
+}
+// ======================================
+
+const AddSlotModal: React.FC<AddSlotModalProps> = ({ isOpen, onClose, onAddSlot, selectedDate }) => {
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:30');
   const [maxPatients, setMaxPatients] = useState(1);
@@ -43,7 +53,7 @@ const AddSlotModal: React.FC<{
     e.preventDefault();
     onAddSlot({
       date: selectedDate.toISOString().split('T')[0],
-      startTime,
+      startTime, // ĐÃ ĐẢM BẢO TRUYỀN startTime
       endTime,
       maxPatients,
       type: appointmentType,
@@ -111,14 +121,22 @@ export const DoctorScheduleManager: React.FC<DoctorScheduleManagerProps> = ({ in
   const [displayDate, setDisplayDate] = useState(new Date()); 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleAddSlot = (newSlotData: Omit<TimeSlot, 'id' | 'doctorId' | 'bookedCount' | 'status'>) => {
+  // SỬA LẠI TYPE CHO newSlotData
+  const handleAddSlot = (newSlotData: {
+    date: string;
+    startTime: string;
+    endTime: string;
+    maxPatients: number;
+    type: 'online' | 'offline';
+  }) => {
     const newSlot: TimeSlot = {
       ...newSlotData,
       id: `slot-${Date.now()}`,
-      doctorId: 'doc-1',
+      doctorId: 'doc-1', // Should be dynamic
       bookedCount: 0,
       status: 'available',
     };
+    // Bây giờ dòng này sẽ an toàn vì newSlotData luôn có startTime
     setSlots(prev => [...prev, newSlot].sort((a,b) => a.startTime.localeCompare(b.startTime)));
   };
 
@@ -143,12 +161,10 @@ export const DoctorScheduleManager: React.FC<DoctorScheduleManagerProps> = ({ in
   
   const { weekDays, monthYearLabel } = useMemo(() => {
     const startOfWeek = new Date(displayDate);
-    // Set to the first day of the week (Sunday), but we'll display Monday first
-    const dayOfWeek = startOfWeek.getDay(); // 0 for Sunday, 1 for Monday, etc.
-    const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when week starts on Sunday
+    const dayOfWeek = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
 
-    
     const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(startOfWeek);
         d.setDate(d.getDate() + i);
