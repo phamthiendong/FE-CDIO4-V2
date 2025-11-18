@@ -23,14 +23,14 @@ export interface User {
   name: string;
   email?: string;
   avatar?: string; // optional so both UI and backend shapes work
-  role?: 'patient' | 'doctor' | 'admin' | 'staff';
+  role?: "patient" | "doctor" | "admin" | "staff";
 
   // optional patient profile fields
   phone?: string;
   address?: string;
   insuranceNumber?: string;
   medicalHistorySummary?: string;
-  relatives?: { id: string; name: string; relationship: string; }[];
+  relatives?: { id: string; name: string; relationship: string }[];
 }
 
 // Full Doctor model used across the app
@@ -52,12 +52,15 @@ export interface Doctor {
 }
 
 // Lightweight doctor shape used in lists/cards (keeps backward compatibility)
-export type LightweightDoctor = Pick<Doctor, 'id' | 'name' | 'specialty' | 'reviews'>;
+export type LightweightDoctor = Pick<
+  Doctor,
+  "id" | "name" | "specialty" | "reviews"
+>;
 
 export interface SpecialtySuggestion {
   specialty: string;
   reason: string;
-  riskLevel: 'Thấp' | 'Trung bình' | 'Cao';
+  riskLevel: "Thấp" | "Trung bình" | "Cao";
 }
 
 export interface Prescription {
@@ -81,7 +84,7 @@ export interface MedicalRecord {
   prescriptions: Prescription[];
   consultationSummary?: string;
   date: string;
-  attachments?: { name: string; url: string; }[];
+  attachments?: { name: string; url: string }[];
 }
 
 // Combined Appointment type that supports both backend shapes seen in file
@@ -93,8 +96,16 @@ export interface Appointment {
   slotId?: string;
   date: string;
   time: string;
-  status: 'Sắp diễn ra' | 'Đã hoàn thành' | 'Đã hủy' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Hoàn thành';
-  type: 'online' | 'offline';
+  status:
+    | "Sắp diễn ra"
+    | "Đã hoàn thành"
+    | "Đã hủy"
+    | "Chờ xác nhận"
+    | "Đã xác nhận"
+    | "Chờ xác nhận"
+    | "Đã xác nhận"
+    | "Hoàn thành";
+  type: "online" | "offline";
   price?: number;
   medicalRecordId?: string;
 }
@@ -103,7 +114,7 @@ export interface PendingAppointment {
   doctor: Doctor;
   date: string;
   time: string;
-  type: 'online' | 'offline';
+  type: "online" | "offline";
 }
 
 export interface NewDoctorData {
@@ -130,16 +141,22 @@ export interface LearningRequest {
   id: string;
   question: string;
   count: number;
-  status: 'pending' | 'resolved';
+  status: "pending" | "resolved";
 }
 
-export type NotificationType = 'appointment' | 'prescription' | 'followUp' | 'aiResult' | 'human_response' | 'admin_alert';
+export type NotificationType =
+  | "appointment"
+  | "prescription"
+  | "followUp"
+  | "aiResult"
+  | "human_response"
+  | "admin_alert";
 
 // Unified Notification used by backend + a simpler UI notification alias
 export interface Notification {
   id: string;
   userId?: string;
-  type: NotificationType | 'info' | 'warning';
+  type: NotificationType | "info" | "warning";
   message: string;
   timestamp?: string;
   read?: boolean;
@@ -149,7 +166,7 @@ export interface Notification {
 export interface UiNotification {
   id: string;
   message: string;
-  type: 'info' | 'warning';
+  type: "info" | "warning";
 }
 
 export interface Service {
@@ -164,12 +181,12 @@ export interface AiInteractionLog {
   aiResponse: string;
   humanResponse?: string;
   timestamp: string;
-  status: 'answered' | 'needs_human_review';
+  status: "answered" | "needs_human_review";
 }
 
 export interface RecentActivity {
   id: string;
-  type: 'new_user' | 'new_appointment';
+  type: "new_user" | "new_appointment";
   message: string;
   timestamp: string;
 }
@@ -182,6 +199,6 @@ export interface TimeSlot {
   endTime: string; // HH:mm
   maxPatients: number;
   bookedCount: number;
-  status: 'available' | 'full' | 'cancelled';
-  type: 'online' | 'offline';
+  status: "available" | "full" | "cancelled";
+  type: "online" | "offline";
 }
