@@ -13,6 +13,7 @@ export interface Review {
   author: string;
   rating: number;
   comment: string;
+  date: string;
 }
 
 export interface User {
@@ -26,6 +27,21 @@ export interface User {
   insuranceNumber?: string;
   medicalHistorySummary?: string;
   relatives?: { id: string; name: string; relationship: string; }[];
+  
+  age?: number;
+  gender?: 'Nam' | 'Nữ';
+}
+
+export interface TimeSlot {
+  id: string;
+  doctorId: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  maxPatients: number;
+  bookedCount: number;
+  status: 'available' | 'full' | 'cancelled';
+  type: 'online' | 'offline';
 }
 
 export interface Doctor {
@@ -76,11 +92,23 @@ export interface MedicalRecord {
   attachments?: { name: string; url: string; }[];
 }
 
+export interface MedicalHistoryRecord {
+  id: string;
+  patientId: string;
+  patientName: string;
+  date: string;
+  diagnosis: string;
+  prescription: string; 
+  notes: string;
+  symptoms?: string; 
+  doctorId?: string; 
+}
+
 export interface Appointment {
   id: string;
   patientId: string;
   doctorId?: string; 
-  doctor?: Doctor;
+  doctor: Doctor; 
   slotId?: string;
   date: string;
   time: string;
@@ -162,16 +190,4 @@ export interface RecentActivity {
   type: 'new_user' | 'new_appointment';
   message: string;
   timestamp: string;
-}
-
-export interface TimeSlot {
-  id: string;
-  doctorId: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
-  maxPatients: number;
-  bookedCount: number;
-  status: 'available' | 'full' | 'cancelled';
-  type: 'online' | 'offline';
 }
