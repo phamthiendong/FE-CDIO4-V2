@@ -10,8 +10,6 @@ let ai: GoogleGenAI | null = null;
 if (API_KEY) {
   ai = new GoogleGenAI({ apiKey: API_KEY });
 } else {
-  // In a real app, you might want to handle this more gracefully.
-  // For this context, we assume the API key is provided.
   console.warn("API_KEY is not set. AI features will not work.");
 }
 

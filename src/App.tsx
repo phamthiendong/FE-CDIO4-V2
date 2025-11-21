@@ -14,7 +14,7 @@ import { ChatPage } from '@/pages/consultation/ChatPage';
 import { DoctorDashboard } from '@/pages/doctor/DoctorDashboard';
 import { DoctorProfileManagementPage } from '@/pages/doctor/DoctorProfileManagementPage';
 import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
-import { DoctorScheduleManager } from '@/pages/doctor/DoctorScheduleManager'; // Đã import file đúng
+import { DoctorScheduleManager } from '@/pages/doctor/DoctorScheduleManager'; 
 import { DoctorSchedulePage } from '@/pages/doctor/DoctorSchedulePage';
 import { FindDoctorPage } from '@/pages/FindDoctorPage';
 import { HomePage } from '@/pages/HomePage';
@@ -70,6 +70,7 @@ import type {
   Specialty,
   AiInteractionLog,
   RecentActivity,
+  MedicalHistoryRecord 
 } from '@/types/types';
 
 type Page =
@@ -161,7 +162,6 @@ export default function App() {
 
   const isLoggedIn = !!currentUser;
 
-  // ... (Toàn bộ các hàm handler từ dòng 179 đến 807 giữ nguyên, không cần thay đổi)
   const handleAnalyzeSymptoms = async () => {
     if (!symptoms.trim()) {
       setError("Please describe your symptoms before analyzing.");
@@ -269,6 +269,8 @@ export default function App() {
       email,
       role: "patient",
       relatives: [],
+      age: 0,
+      gender: 'Nam', 
     };
     setUsers((prev) => [...prev, newUser]);
     setCurrentUser(newUser);
@@ -290,7 +292,6 @@ export default function App() {
       appointment.status !== "Đã xác nhận" &&
       appointment.status !== "Sắp diễn ra"
     ) {
-      // Sắp diễn ra is for old approved data
       setNotification("Lịch hẹn này chưa được bác sĩ xác nhận.");
       return;
     }
@@ -303,7 +304,6 @@ export default function App() {
   };
 
   const handleEndCall = async (transcript: string) => {
-    // Update appointment status
     const updatedAppointment = {
       ...activeAppointment!,
       status: "Đã hoàn thành" as const,
@@ -314,7 +314,6 @@ export default function App() {
       )
     );
 
-    // Immediately generate summary
     setIsSummarizing(true);
     const summary = await summarizeTranscript(transcript);
     setConsultationSummary(summary);
@@ -322,7 +321,6 @@ export default function App() {
     setAppointmentForRecord(updatedAppointment);
     setActiveAppointment(null);
 
-    // Navigate based on role
     if (currentUser?.role === "doctor") {
       setPage("createMedicalRecord");
     } else {
@@ -383,7 +381,6 @@ export default function App() {
       )
     );
 
-    // Create notification for the patient
     const patientNotification: Notification = {
       id: `notif-${Date.now()}`,
       userId: appointmentForRecord.patientId,
@@ -396,7 +393,7 @@ export default function App() {
 
     setAppointmentForRecord(null);
     setConsultationSummary("");
-    setCallAttachments([]); // Clear attachments for next call
+    setCallAttachments([]); 
     setNotification("Hồ sơ bệnh án đã được lưu thành công.");
     setPage("doctorSchedule");
   };
@@ -427,14 +424,18 @@ export default function App() {
       author: currentUser?.name || "Anonymous",
       rating,
       comment,
+      date: new Date().toISOString().split('T')[0], 
     };
+
     setDoctors((prev) =>
       prev.map((doc) => {
         if (doc.id === appointment.doctor.id) {
           const updatedReviews = [...doc.reviews, review];
           const newRating =
-            updatedReviews.reduce((acc, r) => acc + r.rating, 0) /
-            updatedReviews.length;
+            updatedReviews.length > 0
+              ? updatedReviews.reduce((acc, r) => acc + r.rating, 0) /
+                updatedReviews.length
+              : rating; 
           return { ...doc, reviews: updatedReviews, rating: newRating };
         }
         return doc;
@@ -443,7 +444,6 @@ export default function App() {
     setAppointmentToReview(null);
     setNotification("Cảm ơn bạn đã đánh giá!");
   };
-
   const handleAddNewDoctor = (data: NewDoctorData) => {
     const newUser: User = {
       id: `user-doc${Date.now()}`,
@@ -457,7 +457,7 @@ export default function App() {
       name: data.name,
       specialty: data.specialty,
       experience: data.experience,
-      rating: 5.0, // Initial rating
+      rating: 5.0, 
       imageUrl: data.imageUrl
         ? URL.createObjectURL(data.imageUrl)
         : "https://picsum.photos/seed/newdoc/200/200",
@@ -467,7 +467,7 @@ export default function App() {
       certificateUrl: data.certificate
         ? URL.createObjectURL(data.certificate)
         : undefined,
-      languages: ["Vietnamese"], // Default
+      languages: ["Vietnamese"], 
       reviews: [],
       schedule: [],
     };
@@ -499,13 +499,11 @@ export default function App() {
     id?: string
   ) => {
     if (id) {
-      // Editing
       setKnowledgeBase((prev) =>
         prev.map((item) => (item.id === id ? { ...item, ...data } : item))
       );
       setNotification("Kiến thức đã được cập nhật.");
     } else {
-      // Adding new
       const newItem: KnowledgeBaseItem = { id: `kb${Date.now()}`, ...data };
       setKnowledgeBase((prev) => [...prev, newItem]);
       setNotification("Kiến thức mới đã được thêm vào cơ sở tri thức.");
@@ -540,7 +538,6 @@ export default function App() {
     );
   };
 
-  // --- Admin CRUD Handlers ---
   const handleUpdateUser = (updatedData: Partial<User> & { id: string }) => {
     setUsers((prev) =>
       prev.map((u) => (u.id === updatedData.id ? { ...u, ...updatedData } : u))
@@ -635,7 +632,6 @@ export default function App() {
     }
   };
 
-  // --- AI Interaction Handlers ---
   const handleLogAiInteraction = (userQuery: string, aiResponse: string) => {
     if (!currentUser) return;
 
@@ -708,18 +704,15 @@ export default function App() {
     );
   }, [doctors, suggestedSpecialties]);
 
-  // --- Notification Handlers ---
   const handleToggleNotificationPanel = () => {
     setIsNotificationPanelOpen((prev) => !prev);
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    // Mark as read first
     setNotifications((prev) =>
       prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
     );
 
-    // Handle specific actions
     if (notification.type === "human_response" && notification.relatedId) {
       const log = aiInteractionLogs.find(
         (l) => l.id === notification.relatedId
@@ -784,7 +777,6 @@ export default function App() {
         );
         if (!currentDoctorForDash) return <p>Doctor profile not found.</p>;
 
-        // SỬA LỖI 1: TÍNH TOÁN VÀ TRUYỀN totalRevenue
         const totalRevenue = appointments
           .filter(
             (apt) =>
@@ -807,7 +799,8 @@ export default function App() {
             onConfirmAppointment={handleConfirmAppointmentByDoctor}
             onCancelAppointment={handleCancelAppointmentByDoctor}
             onViewSchedule={() => setPage("doctorSchedule")}
-            totalRevenue={totalRevenue} // ĐÃ THÊM PROP
+            totalRevenue={totalRevenue}
+            medicalHistory={medicalRecords as unknown as MedicalHistoryRecord[]}
           />
         );
       case "findDoctor":
@@ -921,8 +914,6 @@ export default function App() {
         );
         if (!currentDoctorForManager) return <p>Doctor profile not found.</p>;
         
-        // SỬA LỖI 2: Truyền vào mảng rỗng để hết lỗi type. 
-        // Bạn cần đảm bảo dữ liệu trong `constants.ts` có `schedule` đúng định dạng `TimeSlot[]`
         return (
           <DoctorScheduleManager
             initialSlots={currentDoctorForManager.schedule || []}
