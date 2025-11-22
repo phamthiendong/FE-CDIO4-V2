@@ -71,6 +71,7 @@ import type {
   AiInteractionLog,
   RecentActivity,
 } from '@/types/types';
+import { FloatingChatbox } from "./components/layout/FloatingChatbox";
 
 type Page =
   | "home"
@@ -1137,6 +1138,7 @@ export default function App() {
       {logToView && (
         <ResponseViewModal log={logToView} onClose={() => setLogToView(null)} />
       )}
+      <FloatingChatbox/>
     </div>
   );
 }
