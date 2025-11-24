@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, ArrowLeft, Eye, EyeOff, CheckCircle, X } from 'lucide-react';
 
 interface LoginModalProps {
@@ -13,15 +13,41 @@ type ViewType = 'login' | 'signup' | 'forgot' | 'verify' | 'reset' | 'success';
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users, doctors, onSignUp }) => {
   const [view, setView] = useState<ViewType>('login');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  
+  const [lastName, setLastName] = useState(''); 
+  const [firstName, setFirstName] = useState('');
+
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [timer, setTimer] = useState(60);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (view === 'verify' && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [view, timer]);
+
+  const handleStartVerification = () => {
+      setTimer(60);
+      setView('verify');
+  };
+
+  const handleResendCode = () => {
+      setTimer(60);
+      alert('Mã đã được gửi lại!');
+  };
 
   const handleCodeChange = (index: number, value: string) => {
     if (value.length > 1) return;
@@ -51,7 +77,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     setLoading(false);
-    setView('verify');
+    handleStartVerification(); 
   };
 
   const handleVerifyCode = async (e: React.FormEvent) => {
@@ -118,17 +144,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
       return;
     }
     
-    if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
-      return;
-    }
 
     setError('');
     setLoading(true);
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    onSignUp(name, email);
+    const fullName = `${lastName} ${firstName}`.trim();
+    onSignUp(fullName, email);
   };
 
   const handleGoogleLogin = () => {
@@ -144,7 +167,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
         className="bg-white rounded-3xl shadow-2xl w-full max-w-[400px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-      {/* Header with gradient */}
         <div className="bg-gradient-to-r from-[#0891B2] to-[#056b83] p-6 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
           <div className="relative">
@@ -290,21 +312,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
-          {/* Signup View */}
           {view === 'signup' && (
             <form onSubmit={handleSignUp} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Họ và Tên</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    className="w-full pl-11 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0891B2] focus:border-transparent transition-all outline-none"
-                    placeholder="Tên"
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Họ</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0891B2] focus:border-transparent transition-all outline-none"
+                      placeholder="Nguyễn"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Tên</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      className="w-full pl-4 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0891B2] focus:border-transparent transition-all outline-none"
+                      placeholder="Văn A"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -341,28 +377,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Xác nhận mật khẩu</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="w-full pl-11 pr-12 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0891B2] focus:border-transparent transition-all outline-none"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
@@ -411,7 +425,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
-          {/* Forgot Password View */}
           {view === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div>
@@ -449,7 +462,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
-          {/* Verification Code View */}
           {view === 'verify' && (
             <form onSubmit={handleVerifyCode} className="space-y-6">
               <div>
@@ -484,16 +496,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
                 Không nhận được mã?{' '}
                 <button
                   type="button"
-                  onClick={() => alert('Mã đã được gửi lại!')}
-                  className="font-semibold text-[#0891B2] hover:text-[#06788f]"
+                  onClick={handleResendCode}
+                  disabled={timer > 0} 
+                  className={`font-semibold ${timer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-[#0891B2] hover:text-[#06788f]'}`}
                 >
-                  Gửi lại
+                  {timer > 0 ? `Gửi lại (${timer}s)` : 'Gửi lại'}
                 </button>
               </p>
             </form>
           )}
 
-          {/* Reset Password View */}
           {view === 'reset' && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
@@ -554,7 +566,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
-          {/* Success View */}
           {view === 'success' && (
             <div className="text-center space-y-6 py-4">
               <div className="flex justify-center">
@@ -566,7 +577,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
               <div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Thành công!</h3>
                 <p className="text-slate-600">
-                  Mật khẩu của bạn đã được đặt lại thành công. Bạn có thể đăng nhập với mật khẩu mới.
+                  Mật khẩu của bạn đã được đặt lại thành công.
                 </p>
               </div>
 
