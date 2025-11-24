@@ -19,7 +19,8 @@ import {
   Timer,
   Eye,
   X,
-  StickyNote
+  StickyNote,
+  AlertTriangle
 } from 'lucide-react';
 
 const formatTimeDisplay = (time24: string) => {
@@ -32,6 +33,7 @@ const formatTimeDisplay = (time24: string) => {
     });
 };
 
+// Cập nhật interface để onCancelAppointment nhận thêm reason
 interface DoctorDashboardProps {
   doctor: Doctor;
   appointments: Appointment[];
@@ -41,9 +43,74 @@ interface DoctorDashboardProps {
   medicalHistory: MedicalHistoryRecord[];
   onStartConsultation: (appointment: Appointment) => void;
   onConfirmAppointment: (appointmentId: string) => void;
-  onCancelAppointment: (appointmentId: string) => void;
+  onCancelAppointment: (appointmentId: string, reason: string) => void; // Thêm tham số reason
   onViewSchedule: () => void;
 }
+
+// --- MODAL HỦY LỊCH (MỚI) ---
+interface CancelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (reason: string) => void;
+}
+
+const CancelModal: React.FC<CancelModalProps> = ({ isOpen, onClose, onConfirm }) => {
+    const [reason, setReason] = useState('');
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setReason('');
+            setError('');
+        }
+    }, [isOpen]);
+
+    const handleSubmit = () => {
+        if (!reason.trim()) {
+            setError('Vui lòng nhập lý do hủy lịch.');
+            return;
+        }
+        onConfirm(reason);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-red-50">
+                    <div className="flex items-center gap-2 text-red-700 font-bold">
+                        <AlertTriangle className="w-5 h-5" />
+                        <h3>Xác nhận hủy lịch hẹn</h3>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <p className="text-sm text-slate-600">Bạn có chắc chắn muốn hủy lịch hẹn này không? Hành động này không thể hoàn tác.</p>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Lý do hủy <span className="text-red-500">*</span></label>
+                        <textarea 
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none text-sm resize-none"
+                            rows={3}
+                            placeholder="Nhập lý do hủy (ví dụ: Bác sĩ bận đột xuất, Sai thông tin...)"
+                            value={reason}
+                            onChange={(e) => {
+                                setReason(e.target.value);
+                                if(e.target.value.trim()) setError('');
+                            }}
+                        />
+                        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+                    </div>
+                </div>
+                <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+                    <button onClick={onClose} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 text-sm">Quay lại</button>
+                    <button onClick={handleSubmit} className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-sm shadow-sm shadow-red-200">Xác nhận hủy</button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const DoctorDashboard: React.FC<DoctorDashboardProps> = (props) => {
     const { 
@@ -70,6 +137,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = (props) => {
     // --- States cho Modal ---
     const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
+    // --- State cho Modal Hủy ---
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
+
     const today = new Date().toISOString().split('T')[0];
     
     // Logic lọc lịch hẹn hôm nay
@@ -79,7 +150,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = (props) => {
             (
                 a.status === 'Đã xác nhận' || 
                 a.status === 'Sắp diễn ra' || 
-                (a.status === 'Chờ xác nhận' && a.type === 'offline')
+                a.status === 'Chờ xác nhận' // Hiển thị cả chờ xác nhận để thao tác
             )
         );
     }, [appointments, today]);
@@ -141,8 +212,29 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = (props) => {
             : [];
     }, [selectedPatientId, medicalHistory]);
 
+    // Handler mở modal hủy
+    const handleRequestCancel = (appointmentId: string) => {
+        setAppointmentToCancel(appointmentId);
+        setIsCancelModalOpen(true);
+    };
+
+    // Handler xác nhận hủy từ modal
+    const handleConfirmCancel = (reason: string) => {
+        if (appointmentToCancel) {
+            onCancelAppointment(appointmentToCancel, reason);
+        }
+    };
+
     return (
     <div className="max-w-7xl mx-auto space-y-8 p-4 sm:p-6 lg:p-8 font-sans">
+      
+      {/* Modal Hủy Lịch */}
+      <CancelModal 
+        isOpen={isCancelModalOpen} 
+        onClose={() => setIsCancelModalOpen(false)} 
+        onConfirm={handleConfirmCancel}
+      />
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Chào mừng trở lại, {doctor.name}!</h1>
@@ -180,7 +272,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = (props) => {
                                 users={users}
                                 onStartConsultation={onStartConsultation}
                                 onConfirmAppointment={onConfirmAppointment}
-                                onCancelAppointment={onCancelAppointment}
+                                onRequestCancel={handleRequestCancel} // Truyền handler mới
                             />
                             ))}
                         </div>
@@ -367,6 +459,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = (props) => {
     </div>
   );
 };
+
 const PatientHistoryModal: React.FC<{ isOpen: boolean; onClose: () => void; patient: User; historyRecords: MedicalHistoryRecord[]; }> = ({ isOpen, onClose, patient, historyRecords }) => {
     if (!isOpen) return null;
 
@@ -453,7 +546,14 @@ const DashboardCard: React.FC<{ title: string; icon?: React.ElementType; childre
     </div>
 );
 
-const AppointmentCard: React.FC<{ appointment: Appointment; users: User[]; onStartConsultation: (a: Appointment) => void; onConfirmAppointment: (id: string) => void; onCancelAppointment: (id: string) => void; }> = ({ appointment, users, onStartConsultation, onConfirmAppointment, onCancelAppointment }) => {
+// Cập nhật Component Card để nhận onRequestCancel
+const AppointmentCard: React.FC<{ 
+    appointment: Appointment; 
+    users: User[]; 
+    onStartConsultation: (a: Appointment) => void; 
+    onConfirmAppointment: (id: string) => void; 
+    onRequestCancel: (id: string) => void; // Thay đổi từ onCancelAppointment
+}> = ({ appointment, users, onStartConsultation, onConfirmAppointment, onRequestCancel }) => {
   const patient = users.find(u => u.id === appointment.patientId);
   const formattedDate = new Date(`${appointment.date}T00:00:00`).toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric' });
   const isOnline = appointment.type === 'online';
@@ -504,16 +604,25 @@ const AppointmentCard: React.FC<{ appointment: Appointment; users: User[]; onSta
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 sm:border-none justify-end">
+            
+            {/* Logic cho Online: Bắt đầu khám */}
             {isOnline && (appointment.status === 'Đã xác nhận' || appointment.status === 'Sắp diễn ra') && (
                 <button onClick={() => onStartConsultation(appointment)} className="w-full sm:w-auto px-6 py-2.5 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 text-sm transition-colors shadow-md shadow-cyan-100">Bắt đầu khám</button>
             )}
+
+            {/* Logic cho Offline: Chỉ hiện giờ khám (nếu đã xác nhận) */}
             {!isOnline && (appointment.status === 'Đã xác nhận' || appointment.status === 'Sắp diễn ra') && (
-                 <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end gap-2 px-4 py-2.5 bg-slate-50 text-slate-700 font-bold rounded-lg border border-slate-200 text-sm"><Clock className="w-4 h-4" /><span>Khám lúc {formatTimeDisplay(appointment.time)}</span></div>
+                 <div className="flex gap-2">
+                     <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end gap-2 px-4 py-2.5 bg-slate-50 text-slate-700 font-bold rounded-lg border border-slate-200 text-sm"><Clock className="w-4 h-4" /><span>Khám lúc {formatTimeDisplay(appointment.time)}</span></div>
+                     <button onClick={() => onRequestCancel(appointment.id)} className="flex items-center justify-center gap-2 bg-red-50 text-red-700 font-semibold py-2.5 px-3 rounded-lg border border-red-100 hover:bg-red-100 hover:border-red-200 text-sm transition-all"><XCircle className="w-4 h-4"/></button>
+                 </div>
             )}
+
+            {/* Logic Xác nhận/Hủy cho trạng thái Chờ xác nhận (Cả Online & Offline) */}
             {isPending && (
             <>
                 <button onClick={() => onConfirmAppointment(appointment.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 font-semibold py-2.5 px-4 rounded-lg border border-emerald-100 hover:bg-emerald-100 hover:border-emerald-200 text-sm transition-all"><ShieldCheck className="w-4 h-4"/> <span>Xác nhận</span></button>
-                <button onClick={() => onCancelAppointment(appointment.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-50 text-red-700 font-semibold py-2.5 px-4 rounded-lg border border-red-100 hover:bg-red-100 hover:border-red-200 text-sm transition-all"><XCircle className="w-4 h-4"/> <span>Hủy</span></button>
+                <button onClick={() => onRequestCancel(appointment.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-50 text-red-700 font-semibold py-2.5 px-4 rounded-lg border border-red-100 hover:bg-red-100 hover:border-red-200 text-sm transition-all"><XCircle className="w-4 h-4"/> <span>Hủy</span></button>
             </>
             )}
         </div>
