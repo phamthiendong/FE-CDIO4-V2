@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import type { Appointment, Prescription, MedicalRecord } from '../../../types/types';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';

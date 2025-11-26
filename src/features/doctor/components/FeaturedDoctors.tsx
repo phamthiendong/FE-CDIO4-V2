@@ -11,8 +11,6 @@ interface FeaturedDoctorsProps {
 const featuredDoctors = INITIAL_DOCTORS.slice(0, 3);
 
 export const FeaturedDoctors: React.FC<FeaturedDoctorsProps> = ({ onStart }) => {
-  // When a featured doctor is clicked on the homepage, we want to start the app flow
-  // rather than go directly to their profile.
   const handleSelectDoctor = (doctor: Doctor) => {
     onStart();
   };
