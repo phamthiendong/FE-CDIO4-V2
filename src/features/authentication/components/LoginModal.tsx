@@ -14,11 +14,13 @@ type ViewType = 'login' | 'signup' | 'forgot' | 'verify' | 'reset' | 'success';
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users, doctors, onSignUp }) => {
   const [view, setView] = useState<ViewType>('login');
   
+  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  const [lastName, setLastName] = useState(''); 
-  const [firstName, setFirstName] = useState('');
+  // Tách Họ và Tên
+  const [lastName, setLastName] = useState(''); // Họ
+  const [firstName, setFirstName] = useState(''); // Tên
 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,8 +29,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Timer State
   const [timer, setTimer] = useState(60);
 
+  // Effect để chạy đồng hồ đếm ngược khi ở view verify
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (view === 'verify' && timer > 0) {
@@ -39,13 +43,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
     return () => clearInterval(interval);
   }, [view, timer]);
 
+  // Reset timer khi chuyển sang view forgot (để chuẩn bị gửi mã mới)
   const handleStartVerification = () => {
       setTimer(60);
       setView('verify');
   };
 
   const handleResendCode = () => {
-      setTimer(60);
+      // Logic gửi lại mã ở đây (API call)
+      setTimer(60); // Reset lại 60s
       alert('Mã đã được gửi lại!');
   };
 
@@ -77,7 +83,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     setLoading(false);
-    handleStartVerification(); 
+    handleStartVerification(); // Chuyển view và reset timer
   };
 
   const handleVerifyCode = async (e: React.FormEvent) => {
@@ -144,12 +150,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
       return;
     }
     
+    // BỎ CHECK confirmPassword Ở ĐÂY NHƯ YÊU CẦU
 
     setError('');
     setLoading(true);
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     
+    // Ghép Họ và Tên lại
     const fullName = `${lastName} ${firstName}`.trim();
     onSignUp(fullName, email);
   };
@@ -167,6 +175,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
         className="bg-white rounded-3xl shadow-2xl w-full max-w-[400px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+      {/* Header with gradient */}
         <div className="bg-gradient-to-r from-[#0891B2] to-[#056b83] p-6 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
           <div className="relative">
@@ -312,8 +321,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
+          {/* Signup View - ĐÃ SỬA THEO YÊU CẦU */}
           {view === 'signup' && (
             <form onSubmit={handleSignUp} className="space-y-4">
+              {/* Tách Họ và Tên thành 2 cột */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Họ</label>
@@ -381,6 +392,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
                 </div>
               </div>
 
+              {/* ĐÃ BỎ PHẦN XÁC NHẬN MẬT KHẨU */}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -425,6 +438,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
+          {/* Forgot Password View */}
           {view === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div>
@@ -462,6 +476,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
+          {/* Verification Code View - ĐÃ THÊM COUNTDOWN */}
           {view === 'verify' && (
             <form onSubmit={handleVerifyCode} className="space-y-6">
               <div>
@@ -497,7 +512,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
                 <button
                   type="button"
                   onClick={handleResendCode}
-                  disabled={timer > 0} 
+                  disabled={timer > 0} // Disable nếu đang đếm ngược
                   className={`font-semibold ${timer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-[#0891B2] hover:text-[#06788f]'}`}
                 >
                   {timer > 0 ? `Gửi lại (${timer}s)` : 'Gửi lại'}
@@ -506,6 +521,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
+          {/* Reset Password View */}
           {view === 'reset' && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
@@ -566,6 +582,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
             </form>
           )}
 
+          {/* Success View */}
           {view === 'success' && (
             <div className="text-center space-y-6 py-4">
               <div className="flex justify-center">
@@ -577,7 +594,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, users,
               <div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Thành công!</h3>
                 <p className="text-slate-600">
-                  Mật khẩu của bạn đã được đặt lại thành công.
+                  Mật khẩu của bạn đã được đặt lại thành công. Bạn có thể đăng nhập với mật khẩu mới.
                 </p>
               </div>
 

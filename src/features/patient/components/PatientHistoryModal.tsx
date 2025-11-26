@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import type { MedicalRecord, User } from '../../../types/types';
 import { CalendarIcon } from '../../../components/icons/CalendarIcon';
@@ -20,7 +18,6 @@ const RecordItem: React.FC<{ record: MedicalRecord }> = ({ record }) => {
                 className="w-full text-left p-4 flex justify-between items-center bg-slate-50 hover:bg-slate-100"
             >
                 <div>
-                    {/* FIX: Property 'diagnosis' does not exist on type 'MedicalRecord'. Use 'assessment' instead. */}
                     <p className="font-bold text-slate-800">{record.assessment}</p>
                     <p className="text-sm text-slate-500">{record.date}</p>
                 </div>
@@ -32,7 +29,6 @@ const RecordItem: React.FC<{ record: MedicalRecord }> = ({ record }) => {
                 <div className="p-4 space-y-4">
                     <div>
                         <h4 className="font-semibold text-sm text-slate-600">Ghi chú của bác sĩ (SOAP)</h4>
-                        {/* FIX: Property 'notes' does not exist on type 'MedicalRecord'. Displaying SOAP fields instead. */}
                         <div className="text-sm text-slate-800 mt-1 whitespace-pre-wrap space-y-1">
                           <p><strong>S (Chủ quan):</strong> {record.subjective || 'Không có.'}</p>
                           <p><strong>O (Khách quan):</strong> {record.objective || 'Không có.'}</p>

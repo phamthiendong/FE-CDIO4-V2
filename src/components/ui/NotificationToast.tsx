@@ -14,7 +14,6 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({ message, o
         setIsVisible(true);
         const timer = setTimeout(() => {
             setIsVisible(false);
-            // Allow time for fade-out animation before calling onClose
             setTimeout(onClose, 300); 
         }, 4700);
 
