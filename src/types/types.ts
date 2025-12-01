@@ -21,27 +21,27 @@ export interface User {
   name: string;
   email?: string;
   avatar?: string;
-  role?: 'patient' | 'doctor' | 'admin' | 'staff';
+  role?: "patient" | "doctor" | "admin" | "staff";
   phone?: string;
   address?: string;
   insuranceNumber?: string;
   medicalHistorySummary?: string;
-  relatives?: { id: string; name: string; relationship: string; }[];
-  
+  relatives?: { id: string; name: string; relationship: string }[];
+
   age?: number;
-  gender?: 'Nam' | 'Nữ';
+  gender?: "Nam" | "Nữ";
 }
 
 export interface TimeSlot {
   id: string;
-  doctorId: string;
+  doctorId: number;
   date: string; // YYYY-MM-DD
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   maxPatients: number;
   bookedCount: number;
-  status: 'available' | 'full' | 'cancelled';
-  type: 'online' | 'offline';
+  status: "available" | "full" | "cancelled";
+  type: "online" | "offline";
 }
 
 export interface Doctor {
@@ -52,21 +52,24 @@ export interface Doctor {
   experience: number;
   rating: number;
   imageUrl: string;
-  consultationFee: number; 
+  consultationFee: number;
   bio: string;
   education: string[];
   certificateUrl?: string;
   languages: string[];
-  reviews: Review[];       
-  schedule: TimeSlot[];  
+  reviews: Review[];
+  schedule: TimeSlot[];
 }
 
-export type LightweightDoctor = Pick<Doctor, 'id' | 'name' | 'specialty' | 'reviews'>;
+export type LightweightDoctor = Pick<
+  Doctor,
+  "id" | "name" | "specialty" | "reviews"
+>;
 
 export interface SpecialtySuggestion {
   specialty: string;
   reason: string;
-  riskLevel: 'Thấp' | 'Trung bình' | 'Cao';
+  riskLevel: "Thấp" | "Trung bình" | "Cao";
 }
 
 export interface Prescription {
@@ -89,7 +92,7 @@ export interface MedicalRecord {
   prescriptions: Prescription[];
   consultationSummary?: string;
   date: string;
-  attachments?: { name: string; url: string; }[];
+  attachments?: { name: string; url: string }[];
 }
 
 export interface MedicalHistoryRecord {
@@ -98,22 +101,28 @@ export interface MedicalHistoryRecord {
   patientName: string;
   date: string;
   diagnosis: string;
-  prescription: string; 
+  prescription: string;
   notes: string;
-  symptoms?: string; 
-  doctorId?: string; 
+  symptoms?: string;
+  doctorId?: string;
 }
 
 export interface Appointment {
   id: string;
   patientId: string;
-  doctorId?: string; 
-  doctor: Doctor; 
+  doctorId?: string;
+  doctor: Doctor;
   slotId?: string;
   date: string;
   time: string;
-  status: 'Sắp diễn ra' | 'Đã hoàn thành' | 'Đã hủy' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Hoàn thành';
-  type: 'online' | 'offline';
+  status:
+    | "Sắp diễn ra"
+    | "Đã hoàn thành"
+    | "Đã hủy"
+    | "Chờ xác nhận"
+    | "Đã xác nhận"
+    | "Hoàn thành";
+  type: "online" | "offline";
   price?: number;
   medicalRecordId?: string;
 }
@@ -122,7 +131,7 @@ export interface PendingAppointment {
   doctor: Doctor;
   date: string;
   time: string;
-  type: 'online' | 'offline';
+  type: "online" | "offline";
 }
 
 export interface NewDoctorData {
@@ -149,15 +158,21 @@ export interface LearningRequest {
   id: string;
   question: string;
   count: number;
-  status: 'pending' | 'resolved';
+  status: "pending" | "resolved";
 }
 
-export type NotificationType = 'appointment' | 'prescription' | 'followUp' | 'aiResult' | 'human_response' | 'admin_alert';
+export type NotificationType =
+  | "appointment"
+  | "prescription"
+  | "followUp"
+  | "aiResult"
+  | "human_response"
+  | "admin_alert";
 
 export interface Notification {
   id: string;
   userId?: string;
-  type: NotificationType | 'info' | 'warning';
+  type: NotificationType | "info" | "warning";
   message: string;
   timestamp?: string;
   read?: boolean;
@@ -167,7 +182,7 @@ export interface Notification {
 export interface UiNotification {
   id: string;
   message: string;
-  type: 'info' | 'warning';
+  type: "info" | "warning";
 }
 
 export interface Service {
@@ -182,12 +197,12 @@ export interface AiInteractionLog {
   aiResponse: string;
   humanResponse?: string;
   timestamp: string;
-  status: 'answered' | 'needs_human_review';
+  status: "answered" | "needs_human_review";
 }
 
 export interface RecentActivity {
   id: string;
-  type: 'new_user' | 'new_appointment';
+  type: "new_user" | "new_appointment";
   message: string;
   timestamp: string;
 }

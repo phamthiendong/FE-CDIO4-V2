@@ -1,47 +1,49 @@
 import React, { useState, useMemo, useCallback } from "react";
+// 1. Import React Router
+import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
+
 import { GoogleGenAI, Chat } from "@google/genai";
-import { Footer } from '@/components/layout/Footer';
-import { Header } from '@/components/layout/Header';
-import { NotificationPanel } from '@/components/layout/NotificationPanel';
-import { NotificationToast } from '@/components/ui/NotificationToast';
-import { StethoscopeIcon } from '@/components/icons/StethoscopeIcon';
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { NotificationPanel } from "@/components/layout/NotificationPanel";
+import { NotificationToast } from "@/components/ui/NotificationToast";
+import { StethoscopeIcon } from "@/components/icons/StethoscopeIcon";
 
 // Pages
-import { AboutPage } from '@/pages/AboutPage';
-import { AdminDashboard } from '@/pages/admin/AdminDashboard';
-import { AppointmentsPage } from '@/pages/patient/AppointmentsPage';
-import { ChatPage } from '@/pages/consultation/ChatPage';
-import { DoctorDashboard } from '@/pages/doctor/DoctorDashboard';
-import { DoctorProfileManagementPage } from '@/pages/doctor/DoctorProfileManagementPage';
-import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
-import { DoctorScheduleManager } from '@/pages/doctor/DoctorScheduleManager'; 
-import { DoctorSchedulePage } from '@/pages/doctor/DoctorSchedulePage';
-import { FindDoctorPage } from '@/pages/FindDoctorPage';
-import { HomePage } from '@/pages/HomePage';
-import { PatientDashboard } from '@/pages/patient/PatientDashboard';
-import { PatientProfilePage } from '@/pages/patient/PatientProfilePage';
-import { PostConsultationPage } from '@/pages/consultation/PostConsultationPage';
-import { VideoCallPage } from '@/pages/consultation/VideoCallPage';
+import { AboutPage } from "@/pages/AboutPage";
+import { AdminDashboard } from "@/pages/admin/AdminDashboard";
+import { AppointmentsPage } from "@/pages/patient/AppointmentsPage";
+import { ChatPage } from "@/pages/consultation/ChatPage";
+import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
+import { DoctorProfileManagementPage } from "@/pages/doctor/DoctorProfileManagementPage";
+import { DoctorProfilePage } from "@/pages/doctor/DoctorProfilePage";
+import { DoctorScheduleManager } from "@/pages/doctor/DoctorScheduleManager";
+import { FindDoctorPage } from "@/pages/FindDoctorPage";
+import { HomePage } from "@/pages/HomePage";
+import { PatientDashboard } from "@/pages/patient/PatientDashboard";
+import { PatientProfilePage } from "@/pages/patient/PatientProfilePage";
+import { PostConsultationPage } from "@/pages/consultation/PostConsultationPage";
+import { VideoCallPage } from "@/pages/consultation/VideoCallPage";
 
 // Feature Components
-import { LoginModal } from '@/features/authentication/components/LoginModal';
-import { PaymentModal } from '@/features/booking/components/PaymentModal';
-import { AddDoctorModal } from '@/features/doctor/components/AddDoctorModal';
-import { DoctorList } from '@/features/doctor/components/DoctorList';
-import { ReviewModal } from '@/features/doctor/components/ReviewModal';
-import { SpecialtySuggestions } from '@/features/doctor/components/SpecialtySuggestions';
-import { KnowledgeBaseModal } from '@/features/consultation/components/KnowledgeBaseModal';
-import { ResponseViewModal } from '@/features/consultation/components/ResponseViewModal';
-import { SymptomChecker } from '@/features/consultation/components/SymptomChecker';
-import { MedicalRecordForm } from '@/features/patient/components/MedicalRecordForm';
-import { MedicalRecordViewModal } from '@/features/patient/components/MedicalRecordViewModal';
-import { PatientHistoryModal } from '@/features/patient/components/PatientHistoryModal';
-import { UserEditModal } from '@/features/patient/components/UserEditModal';
+import { LoginModal } from "@/features/authentication/components/LoginModal";
+import { PaymentModal } from "@/features/booking/components/PaymentModal";
+import { AddDoctorModal } from "@/features/doctor/components/AddDoctorModal";
+import { DoctorList } from "@/features/doctor/components/DoctorList";
+import { ReviewModal } from "@/features/doctor/components/ReviewModal";
+import { SpecialtySuggestions } from "@/features/doctor/components/SpecialtySuggestions";
+import { KnowledgeBaseModal } from "@/features/consultation/components/KnowledgeBaseModal";
+import { ResponseViewModal } from "@/features/consultation/components/ResponseViewModal";
+import { SymptomChecker } from "@/features/consultation/components/SymptomChecker";
+import { MedicalRecordForm } from "@/features/patient/components/MedicalRecordForm";
+import { MedicalRecordViewModal } from "@/features/patient/components/MedicalRecordViewModal";
+import { PatientHistoryModal } from "@/features/patient/components/PatientHistoryModal";
+import { UserEditModal } from "@/features/patient/components/UserEditModal";
 
 import {
   getIcd10Suggestions,
   getSpecialtySuggestions,
-} from '@/services/geminiService';
+} from "@/services/geminiService";
 import {
   INITIAL_DOCTORS,
   USERS,
@@ -53,7 +55,7 @@ import {
   SERVICES as INITIAL_SERVICES,
   AI_INTERACTION_LOGS as INITIAL_AI_LOGS,
   ACTIVITIES as INITIAL_ACTIVITIES,
-} from '@/constants';
+} from "@/constants";
 import type {
   SpecialtySuggestion,
   Doctor,
@@ -64,40 +66,24 @@ import type {
   KnowledgeBaseItem,
   LearningRequest,
   MedicalRecord,
-  Prescription,
   Notification,
   Service,
   Specialty,
   AiInteractionLog,
   RecentActivity,
-  MedicalHistoryRecord 
-} from '@/types/types';
+  MedicalHistoryRecord,
+} from "@/types/types";
 
-type Page =
-  | "home"
-  | "symptomChecker"
-  | "findDoctor"
-  | "doctorProfile"
-  | "appointments"
-  | "chat"
-  | "about"
-  | "doctorSchedule"
-  | "adminDashboard"
-  | "videoCall"
-  | "createMedicalRecord"
-  | "postConsultation"
-  | "patientProfile"
-  | "doctorProfileManagement"
-  | "patientDashboard"
-  | "doctorDashboard";
-
+// Init AI
 let ai: GoogleGenAI | null = null;
 if (process.env.API_KEY) {
   ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>("home");
+  // KHỞI TẠO NAVIGATE
+  const navigate = useNavigate();
+
   const [symptoms, setSymptoms] = useState("");
   const [suggestions, setSuggestions] = useState<SpecialtySuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,6 +148,45 @@ export default function App() {
 
   const isLoggedIn = !!currentUser;
 
+  // --- QUAN TRỌNG: Hàm lấy thông tin Bác sĩ dùng chung cho mọi trang ---
+  // Hàm này đảm bảo các trang Dashboard, Lịch, Profile đều nhận được dữ liệu
+  const getCurrentDoctor = useCallback((): Doctor | null => {
+    if (!currentUser || currentUser.role !== "doctor") return null;
+
+    // 1. Tìm trong danh sách có sẵn
+    const existingDoc = doctors.find((d) => d.userId === currentUser.id);
+    if (existingDoc) return existingDoc;
+
+    // 2. Nếu không có (TK từ Backend), tạo object tạm
+    // Lấy tên từ firstName + lastName nếu có, hoặc name
+    const doctorName = (currentUser as any).firstName
+      ? `${(currentUser as any).firstName} ${
+          (currentUser as any).lastName || ""
+        }`.trim()
+      : currentUser.name || "Bác sĩ";
+
+    // Trả về object bác sĩ tạm thời
+    return {
+      id: `doc-backend-${currentUser.id}`,
+      userId: currentUser.id,
+      name: doctorName,
+      specialty: "Đa khoa",
+      experience: 5,
+      rating: 5.0,
+      imageUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        doctorName
+      )}&background=0D9488&color=fff`,
+      consultationFee: 300000,
+      bio: "Bác sĩ chuyên khoa.",
+      education: ["Đại học Y Dược"],
+      languages: ["Tiếng Việt"],
+      reviews: [],
+      schedule: [], // Lịch trống
+    } as Doctor;
+  }, [currentUser, doctors]);
+
+  // --- Handlers ---
+
   const handleAnalyzeSymptoms = async () => {
     if (!symptoms.trim()) {
       setError("Please describe your symptoms before analyzing.");
@@ -214,12 +239,14 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
-    setPage("home");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    navigate("/");
   };
 
   const handleSelectDoctor = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
-    setPage("doctorProfile");
+    navigate("/doctor-profile");
   };
 
   const handleBookAppointment = (
@@ -248,9 +275,9 @@ export default function App() {
       setAppointments((prev) => [...prev, newAppointment]);
       setPendingAppointment(null);
       setNotification(
-        `Yêu cầu đặt hẹn với ${pendingAppointment.doctor.name} đã được gửi và đang chờ bác sĩ xác nhận.`
+        `Yêu cầu đặt hẹn với ${pendingAppointment.doctor.name} đã được gửi.`
       );
-      setPage("appointments");
+      navigate("/appointments");
 
       const newActivity: RecentActivity = {
         id: `act-${Date.now()}`,
@@ -270,13 +297,13 @@ export default function App() {
       role: "patient",
       relatives: [],
       age: 0,
-      gender: 'Nam', 
+      gender: "Nam",
     };
     setUsers((prev) => [...prev, newUser]);
     setCurrentUser(newUser);
     setIsLoginModalOpen(false);
     setNotification(`Chào mừng, ${name}! Tài khoản của bạn đã được tạo.`);
-    setPage("patientDashboard");
+    navigate("/dashboard");
 
     const newActivity: RecentActivity = {
       id: `act-${Date.now()}`,
@@ -296,7 +323,7 @@ export default function App() {
       return;
     }
     setActiveAppointment(appointment);
-    setPage("videoCall");
+    navigate("/video-call");
   };
 
   const handleFileUploadInCall = (file: { name: string; url: string }) => {
@@ -321,27 +348,20 @@ export default function App() {
     setAppointmentForRecord(updatedAppointment);
     setActiveAppointment(null);
 
+    // Điều hướng dựa trên role
     if (currentUser?.role === "doctor") {
-      setPage("createMedicalRecord");
+      navigate("/create-record");
     } else {
-      setPage("postConsultation");
+      navigate("/post-consultation");
     }
   };
 
   const summarizeTranscript = async (transcript: string): Promise<string> => {
     if (!ai) {
-      setNotification(
-        "AI Service not available. Please configure the API key."
-      );
+      setNotification("AI Service not available.");
       return "AI service is not configured.";
     }
-    const prompt = `You are a medical assistant. Summarize the following consultation transcript into key sections: **Symptoms Discussed**, **Doctor's Preliminary Diagnosis**, and **Recommended Next Steps**. The transcript is a conversation between a doctor and a patient.
-    
-    Transcript:
-    "${transcript}"
-    
-    Provide a clear, concise summary in Vietnamese.`;
-
+    const prompt = `You are a medical assistant. Summarize the following consultation transcript... Transcript: "${transcript}"`;
     try {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -349,19 +369,13 @@ export default function App() {
       });
       return response.text;
     } catch (err) {
-      console.error("Error summarizing transcript:", err);
-      return "Sorry, an error occurred while creating the summary.";
+      console.error(err);
+      return "Error creating summary.";
     }
   };
 
-  const handleSaveMedicalRecord = (
-    recordData: Omit<
-      MedicalRecord,
-      "id" | "appointmentId" | "patientId" | "doctorId" | "date" | "attachments"
-    >
-  ) => {
+  const handleSaveMedicalRecord = (recordData: any) => {
     if (!appointmentForRecord) return;
-
     const newRecord: MedicalRecord = {
       id: `mr${Date.now()}`,
       appointmentId: appointmentForRecord.id,
@@ -393,9 +407,14 @@ export default function App() {
 
     setAppointmentForRecord(null);
     setConsultationSummary("");
-    setCallAttachments([]); 
+    setCallAttachments([]);
     setNotification("Hồ sơ bệnh án đã được lưu thành công.");
-    setPage("doctorSchedule");
+
+    if (currentUser?.role === "doctor") {
+      navigate("/doctor/dashboard");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   const handleViewPatientHistory = (patientId: string) => {
@@ -409,9 +428,7 @@ export default function App() {
 
   const handleViewMedicalRecord = (recordId: string) => {
     const record = medicalRecords.find((r) => r.id === recordId);
-    if (record) {
-      setRecordToView(record);
-    }
+    if (record) setRecordToView(record);
   };
 
   const handleSubmitReview = (
@@ -424,7 +441,7 @@ export default function App() {
       author: currentUser?.name || "Anonymous",
       rating,
       comment,
-      date: new Date().toISOString().split('T')[0], 
+      date: new Date().toISOString().split("T")[0],
     };
 
     setDoctors((prev) =>
@@ -435,7 +452,7 @@ export default function App() {
             updatedReviews.length > 0
               ? updatedReviews.reduce((acc, r) => acc + r.rating, 0) /
                 updatedReviews.length
-              : rating; 
+              : rating;
           return { ...doc, reviews: updatedReviews, rating: newRating };
         }
         return doc;
@@ -444,6 +461,7 @@ export default function App() {
     setAppointmentToReview(null);
     setNotification("Cảm ơn bạn đã đánh giá!");
   };
+
   const handleAddNewDoctor = (data: NewDoctorData) => {
     const newUser: User = {
       id: `user-doc${Date.now()}`,
@@ -457,7 +475,7 @@ export default function App() {
       name: data.name,
       specialty: data.specialty,
       experience: data.experience,
-      rating: 5.0, 
+      rating: 5,
       imageUrl: data.imageUrl
         ? URL.createObjectURL(data.imageUrl)
         : "https://picsum.photos/seed/newdoc/200/200",
@@ -467,33 +485,31 @@ export default function App() {
       certificateUrl: data.certificate
         ? URL.createObjectURL(data.certificate)
         : undefined,
-      languages: ["Vietnamese"], 
+      languages: ["Vietnamese"],
       reviews: [],
       schedule: [],
     };
     setUsers((prev) => [...prev, newUser]);
     setDoctors((prev) => [...prev, newDoctor]);
     setIsAddDoctorModalOpen(false);
-    setNotification(`${newDoctor.name} has been added to the platform.`);
+    setNotification(`${newDoctor.name} has been added.`);
   };
 
   const handleUpdateDoctorProfile = (updatedProfile: Partial<Doctor>) => {
-    if (!currentUser || currentUser.role !== "doctor") return;
+    if (!currentUser) return;
     const doctorToUpdate = doctors.find((d) => d.userId === currentUser.id);
     if (!doctorToUpdate) return;
-
     const updatedDoctor = { ...doctorToUpdate, ...updatedProfile };
     setDoctors((prev) =>
       prev.map((d) => (d.id === updatedDoctor.id ? updatedDoctor : d))
     );
-    setNotification("Hồ sơ của bạn đã được cập nhật.");
+    setNotification("Hồ sơ đã cập nhật.");
   };
 
   const handleOpenKnowledgeModal = (item: KnowledgeBaseItem | null) => {
     setEditingKnowledgeItem(item);
     setIsKnowledgeModalOpen(true);
   };
-
   const handleKnowledgeSubmit = (
     data: Omit<KnowledgeBaseItem, "id">,
     id?: string
@@ -504,13 +520,11 @@ export default function App() {
       );
       setNotification("Kiến thức đã được cập nhật.");
     } else {
-      const newItem: KnowledgeBaseItem = { id: `kb${Date.now()}`, ...data };
-      setKnowledgeBase((prev) => [...prev, newItem]);
+      setKnowledgeBase((prev) => [...prev, { id: `kb${Date.now()}`, ...data }]);
       setNotification("Kiến thức mới đã được thêm vào cơ sở tri thức.");
     }
     setIsKnowledgeModalOpen(false);
   };
-
   const handleDeleteKnowledgeItem = (itemId: string) => {
     if (
       window.confirm("Are you sure you want to delete this knowledge item?")
@@ -519,7 +533,6 @@ export default function App() {
       setNotification("Kiến thức đã được xóa.");
     }
   };
-
   const handleResolveLearningRequest = (
     requestId: string,
     question: string
@@ -537,7 +550,6 @@ export default function App() {
       )
     );
   };
-
   const handleUpdateUser = (updatedData: Partial<User> & { id: string }) => {
     setUsers((prev) =>
       prev.map((u) => (u.id === updatedData.id ? { ...u, ...updatedData } : u))
@@ -553,17 +565,6 @@ export default function App() {
     setEditingUser(null);
     setNotification("Thông tin người dùng đã được cập nhật.");
   };
-
-  const handleUpdateUserProfile = (updatedProfile: Partial<User>) => {
-    if (!currentUser) return;
-    const updatedUser = { ...currentUser, ...updatedProfile };
-    setCurrentUser(updatedUser);
-    setUsers((prev) =>
-      prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
-    );
-    setNotification("Hồ sơ của bạn đã được cập nhật.");
-  };
-
   const handleDeleteUser = (userId: string) => {
     const userToDelete = users.find((u) => u.id === userId);
     if (
@@ -577,27 +578,31 @@ export default function App() {
       setNotification(`${userToDelete.name} đã được xóa.`);
     }
   };
-
-  const handleConfirmAppointmentByDoctor = (appointmentId: string) => {
+  const handleUpdateUserProfile = (updatedProfile: Partial<User>) => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, ...updatedProfile };
+    setCurrentUser(updatedUser);
+    setUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
+    );
+    setNotification("Hồ sơ của bạn đã được cập nhật.");
+  };
+  const handleConfirmAppointmentByDoctor = (id: string) => {
     setAppointments((prev) =>
       prev.map((apt) =>
-        apt.id === appointmentId ? { ...apt, status: "Đã xác nhận" } : apt
+        apt.id === id ? { ...apt, status: "Đã xác nhận" } : apt
       )
     );
     setNotification("Lịch hẹn đã được xác nhận.");
   };
-
-  const handleCancelAppointmentByDoctor = (appointmentId: string) => {
+  const handleCancelAppointmentByDoctor = (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn hủy lịch hẹn này không?")) {
       setAppointments((prev) =>
-        prev.map((apt) =>
-          apt.id === appointmentId ? { ...apt, status: "Đã hủy" } : apt
-        )
+        prev.map((apt) => (apt.id === id ? { ...apt, status: "Đã hủy" } : apt))
       );
       setNotification("Lịch hẹn đã được hủy.");
     }
   };
-
   const handleUpdateServicePrice = (specialty: Specialty, newPrice: number) => {
     setServices((prev) =>
       prev.map((s) =>
@@ -611,49 +616,38 @@ export default function App() {
     );
     setNotification(`Giá cho chuyên khoa ${specialty} đã được cập nhật.`);
   };
-
-  const handleDeleteReview = (doctorId: string, reviewId: string) => {
+  const handleDeleteReview = (docId: string, revId: string) => {
     if (window.confirm("Bạn có chắc muốn xóa đánh giá này?")) {
       setDoctors((prev) =>
-        prev.map((doc) => {
-          if (doc.id === doctorId) {
-            const updatedReviews = doc.reviews.filter((r) => r.id !== reviewId);
-            const newRating =
-              updatedReviews.length > 0
-                ? updatedReviews.reduce((acc, r) => acc + r.rating, 0) /
-                  updatedReviews.length
-                : 5.0;
-            return { ...doc, reviews: updatedReviews, rating: newRating };
-          }
-          return doc;
-        })
+        prev.map((doc) =>
+          doc.id === docId
+            ? { ...doc, reviews: doc.reviews.filter((r) => r.id !== revId) }
+            : doc
+        )
       );
       setNotification("Đánh giá đã được xóa.");
     }
   };
-
-  const handleLogAiInteraction = (userQuery: string, aiResponse: string) => {
+  const handleLogAiInteraction = (q: string, a: string) => {
     if (!currentUser) return;
-
-    const needsReview = aiResponse.includes("Tôi không chắc về điều này");
-    const newLog: AiInteractionLog = {
-      id: `ai-log-${Date.now()}`,
-      userId: currentUser.id,
-      userQuery,
-      aiResponse,
-      timestamp: new Date().toISOString(),
-      status: needsReview ? "needs_human_review" : "answered",
-    };
-    setAiInteractionLogs((prev) => [newLog, ...prev]);
-    if (needsReview) {
+    const needsReview = a.includes("Tôi không chắc về điều này");
+    setAiInteractionLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}`,
+        userQuery: q,
+        aiResponse: a,
+        timestamp: new Date().toISOString(),
+        status: needsReview ? "needs_human_review" : "answered",
+        userId: currentUser.id,
+      },
+    ]);
+    if (needsReview)
       setNotification("Câu hỏi của bạn đã được chuyển đến chuyên gia.");
-    }
   };
-
   const handleSendHumanResponse = (logId: string, response: string) => {
     const log = aiInteractionLogs.find((l) => l.id === logId);
     if (!log) return;
-
     setAiInteractionLogs((prev) =>
       prev.map((l) =>
         l.id === logId
@@ -661,7 +655,6 @@ export default function App() {
           : l
       )
     );
-
     const patientNotification: Notification = {
       id: `notif-hr-${Date.now()}`,
       userId: log.userId,
@@ -674,11 +667,9 @@ export default function App() {
     setNotifications((prev) => [patientNotification, ...prev]);
     setNotification("Phản hồi đã được gửi tới người dùng.");
   };
-
   const handleSendAdminNotification = (doctorId: string, message: string) => {
     const doctorUser = doctors.find((d) => d.id === doctorId)?.userId;
     if (!doctorUser) return;
-
     const newNotification: Notification = {
       id: `notif-admin-${Date.now()}`,
       userId: doctorUser,
@@ -691,23 +682,20 @@ export default function App() {
     setNotification("Thông báo đã được gửi tới bác sĩ.");
   };
 
-  const suggestedSpecialties = useMemo(() => {
-    return suggestions.map((s) => s.specialty.toLowerCase());
-  }, [suggestions]);
-
+  // Helpers UI
+  const suggestedSpecialties = useMemo(
+    () => suggestions.map((s) => s.specialty.toLowerCase()),
+    [suggestions]
+  );
   const filteredDoctors = useMemo(() => {
-    if (suggestedSpecialties.length === 0) {
-      return [];
-    }
+    if (suggestedSpecialties.length === 0) return [];
     return doctors.filter((doctor) =>
       suggestedSpecialties.includes(doctor.specialty.toLowerCase())
     );
   }, [doctors, suggestedSpecialties]);
 
-  const handleToggleNotificationPanel = () => {
+  const handleToggleNotificationPanel = () =>
     setIsNotificationPanelOpen((prev) => !prev);
-  };
-
   const handleNotificationClick = (notification: Notification) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
@@ -725,299 +713,45 @@ export default function App() {
       notification.type === "prescription" ||
       notification.type === "appointment"
     ) {
-      setPage("appointments");
+      navigate("/appointments");
       setIsNotificationPanelOpen(false);
     }
   };
-
-  const handleMarkAllAsRead = () => {
+  const handleMarkAllAsRead = () =>
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const unreadNotificationCount = useMemo(() => {
-    if (!currentUser) return 0;
-    return notifications.filter((n) => !n.read && n.userId === currentUser.id)
-      .length;
-  }, [notifications, currentUser]);
-
-  const userNotifications = useMemo(() => {
-    if (!currentUser) return [];
-    return notifications.filter((n) => n.userId === currentUser.id);
-  }, [notifications, currentUser]);
+  const unreadNotificationCount = useMemo(
+    () =>
+      !currentUser
+        ? 0
+        : notifications.filter((n) => !n.read && n.userId === currentUser.id)
+            .length,
+    [notifications, currentUser]
+  );
+  const userNotifications = useMemo(
+    () =>
+      !currentUser
+        ? []
+        : notifications.filter((n) => n.userId === currentUser.id),
+    [notifications, currentUser]
+  );
 
   const handleProfileClick = () => {
-    if (currentUser?.role === "patient") {
-      setPage("patientProfile");
-    } else if (currentUser?.role === "doctor") {
-      setPage("doctorProfileManagement");
-    }
-  };
-
-  const renderPage = () => {
-    switch (page) {
-      case "home":
-        return <HomePage onStart={() => setPage("symptomChecker")} />;
-      case "patientDashboard":
-        if (!currentUser)
-          return <HomePage onStart={() => setPage("symptomChecker")} />;
-        return (
-          <PatientDashboard
-            currentUser={currentUser}
-            appointments={appointments.filter(
-              (a) => a.patientId === currentUser?.id
-            )}
-            notifications={userNotifications}
-            onFindDoctor={() => setPage("findDoctor")}
-            onViewAppointments={() => setPage("appointments")}
-          />
-        );
-      case "doctorDashboard":
-        const currentDoctorForDash = doctors.find(
-          (d) => d.userId === currentUser?.id
-        );
-        if (!currentDoctorForDash) return <p>Doctor profile not found.</p>;
-
-        const totalRevenue = appointments
-          .filter(
-            (apt) =>
-              apt.doctor.id === currentDoctorForDash.id &&
-              apt.status === "Đã hoàn thành"
-          )
-          .reduce((sum, apt) => sum + apt.doctor.consultationFee, 0);
-
-        return (
-          <DoctorDashboard
-            doctor={currentDoctorForDash}
-            appointments={appointments.filter(
-              (a) => a.doctor.id === currentDoctorForDash.id
-            )}
-            users={users}
-            userNotifications={userNotifications.filter(
-              (n) => n.type === "admin_alert"
-            )}
-            onStartConsultation={handleStartConsultation}
-            onConfirmAppointment={handleConfirmAppointmentByDoctor}
-            onCancelAppointment={handleCancelAppointmentByDoctor}
-            onViewSchedule={() => setPage("doctorSchedule")}
-            totalRevenue={totalRevenue}
-            medicalHistory={medicalRecords as unknown as MedicalHistoryRecord[]}
-          />
-        );
-      case "findDoctor":
-        return (
-          <FindDoctorPage
-            doctors={doctors}
-            onSelectDoctor={handleSelectDoctor}
-          />
-        );
-      case "doctorProfile":
-        if (!selectedDoctor) {
-          return (
-            <FindDoctorPage
-              doctors={doctors}
-              onSelectDoctor={handleSelectDoctor}
-            />
-          );
-        }
-        return (
-          <DoctorProfilePage
-            doctor={selectedDoctor}
-            onBook={handleBookAppointment}
-          />
-        );
-      case "patientProfile":
-        if (!currentUser) return null;
-        return (
-          <PatientProfilePage
-            currentUser={currentUser}
-            onUpdateProfile={handleUpdateUserProfile}
-            appointments={appointments.filter(
-              (a) => a.patientId === currentUser?.id
-            )}
-            onViewMedicalRecord={handleViewMedicalRecord}
-            doctors={doctors}
-          />
-        );
-      case "doctorProfileManagement":
-        const currentDoctorForProfile = doctors.find(
-          (d) => d.userId === currentUser?.id
-        );
-        if (!currentDoctorForProfile) return <p>Doctor profile not found.</p>;
-        return (
-          <DoctorProfileManagementPage
-            doctor={currentDoctorForProfile}
-            onUpdateProfile={handleUpdateDoctorProfile}
-          />
-        );
-      case "appointments":
-        return (
-          <AppointmentsPage
-            appointments={appointments.filter(
-              (a) => a.patientId === currentUser?.id
-            )}
-            onStartConsultation={handleStartConsultation}
-            onInitiateReview={(apt) => setAppointmentToReview(apt)}
-            onViewMedicalRecord={handleViewMedicalRecord}
-            doctors={doctors}
-            currentUser={currentUser}
-          />
-        );
-      case "about":
-        return <AboutPage onStart={() => setPage("symptomChecker")} />;
-      case "chat":
-        if (!chatSession) return null;
-        return (
-          <ChatPage
-            chatSession={chatSession}
-            onNewChat={startNewChat}
-            onLogInteraction={handleLogAiInteraction}
-          />
-        );
-      case "videoCall":
-        if (!activeAppointment || !currentUser)
-          return <p>Error: No active call.</p>;
-        return (
-          <VideoCallPage
-            appointment={activeAppointment}
-            currentUser={currentUser}
-            patient={
-              users.find((u) => u.id === activeAppointment.patientId) || null
-            }
-            onEndCall={handleEndCall}
-            onFileUpload={handleFileUploadInCall}
-          />
-        );
-      case "createMedicalRecord":
-        if (!appointmentForRecord || !consultationSummary)
-          return <p>Error: Missing appointment data for record.</p>;
-        return (
-          <MedicalRecordForm
-            appointment={appointmentForRecord}
-            aiSummary={consultationSummary}
-            isSummarizing={isSummarizing}
-            onSave={handleSaveMedicalRecord}
-            getIcd10Suggestions={getIcd10Suggestions}
-          />
-        );
-      case "postConsultation":
-        if (!consultationSummary) return <p>Loading summary...</p>;
-        return (
-          <PostConsultationPage
-            summary={consultationSummary}
-            isSummarizing={isSummarizing}
-            onDone={() => setPage("appointments")}
-          />
-        );
-      case "doctorSchedule":
-        const currentDoctorForManager = doctors.find(
-          (d) => d.userId === currentUser?.id
-        );
-        if (!currentDoctorForManager) return <p>Doctor profile not found.</p>;
-        
-        return (
-          <DoctorScheduleManager
-            initialSlots={currentDoctorForManager.schedule || []}
-            onGoBack={() => setPage("doctorDashboard")}
-          />
-        );
-      case "adminDashboard":
-        return (
-          <AdminDashboard
-            users={users}
-            appointments={appointments}
-            doctors={doctors}
-            onInitiateAddDoctor={() => setIsAddDoctorModalOpen(true)}
-            knowledgeBase={knowledgeBase}
-            learningRequests={learningRequests}
-            onOpenKnowledgeModal={handleOpenKnowledgeModal}
-            onDeleteKnowledgeItem={handleDeleteKnowledgeItem}
-            onResolveLearningRequest={handleResolveLearningRequest}
-            onAdminViewPatientHistory={handleViewPatientHistory}
-            onInitiateUserEdit={(user) => setEditingUser(user)}
-            onDeleteUser={handleDeleteUser}
-            services={services}
-            onUpdateServicePrice={handleUpdateServicePrice}
-            onDeleteReview={handleDeleteReview}
-            aiInteractionLogs={aiInteractionLogs}
-            onSendHumanResponse={handleSendHumanResponse}
-            activities={activities}
-            onSendAdminNotification={handleSendAdminNotification}
-          />
-        );
-      case "symptomChecker":
-      default:
-        return (
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <StethoscopeIcon className="w-16 h-16 mx-auto mb-4 text-cyan-600" />
-              <h1 className="text-4xl md:text-5xl font-bold text-slate-900">
-                AI-Powered Health Assistant
-              </h1>
-              <p className="mt-4 text-lg text-slate-600">
-                Describe your symptoms, and our AI will suggest relevant medical
-                specialties and doctors for you.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200">
-              <SymptomChecker
-                symptoms={symptoms}
-                setSymptoms={setSymptoms}
-                onAnalyze={handleAnalyzeSymptoms}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {error && (
-              <div className="mt-6 text-center text-red-600 bg-red-100 p-4 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <div className="mt-10">
-              <SpecialtySuggestions
-                suggestions={suggestions}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {filteredDoctors.length > 0 && (
-              <div className="mt-12">
-                <h2 className="text-3xl font-bold text-slate-900 mb-6 text-center">
-                  Recommended Doctors
-                </h2>
-                <DoctorList
-                  doctors={filteredDoctors}
-                  onSelectDoctor={handleSelectDoctor}
-                />
-              </div>
-            )}
-          </div>
-        );
-    }
+    if (currentUser?.role === "patient") navigate("/patient-profile");
+    else if (currentUser?.role === "doctor")
+      navigate("/doctor-profile-management");
   };
 
   const goHome = useCallback(() => {
-    if (currentUser?.role === "admin") {
-      setPage("adminDashboard");
-    } else if (currentUser?.role === "doctor") {
-      setPage("doctorDashboard");
-    } else if (currentUser?.role === "patient") {
-      setPage("patientDashboard");
-    } else {
-      setPage("home");
-    }
-  }, [currentUser]);
+    if (currentUser?.role === "admin") navigate("/admin/dashboard");
+    else if (currentUser?.role === "doctor") navigate("/doctor/dashboard");
+    else if (currentUser?.role === "patient") navigate("/dashboard");
+    else navigate("/");
+  }, [currentUser, navigate]);
 
-  const handleLoginClick = () => {
-    setIsLoginModalOpen(true);
-  };
-
+  const handleLoginClick = () => setIsLoginModalOpen(true);
   const handleChatClick = () => {
-    if (!chatSession) {
-      startNewChat();
-    }
-    setPage("chat");
+    if (!chatSession) startNewChat();
+    navigate("/chat");
   };
 
   return (
@@ -1028,41 +762,332 @@ export default function App() {
         currentUser={currentUser}
         onLoginClick={handleLoginClick}
         onLogout={handleLogout}
-        onAppointmentsClick={() => setPage("appointments")}
+        onAppointmentsClick={() => navigate("/appointments")}
         onChatClick={handleChatClick}
-        onAboutClick={() => setPage("about")}
-        onDashboardClick={() => setPage("adminDashboard")}
-        onScheduleClick={() => setPage("doctorSchedule")}
-        onFindDoctorClick={() => setPage("findDoctor")}
+        onAboutClick={() => navigate("/about")}
+        onDashboardClick={() => navigate("/admin/dashboard")}
+        onScheduleClick={() => navigate("/doctor-schedule")}
+        onFindDoctorClick={() => navigate("/find-doctor")}
         onProfileClick={handleProfileClick}
         unreadNotificationCount={unreadNotificationCount}
         onToggleNotificationPanel={handleToggleNotificationPanel}
       />
+
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12">
-        {renderPage()}
+        <Routes>
+          <Route
+            path="/"
+            element={<HomePage onStart={() => navigate("/symptoms")} />}
+          />
+
+          <Route
+            path="/symptoms"
+            element={
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-12">
+                  <StethoscopeIcon className="w-16 h-16 mx-auto mb-4 text-cyan-600" />
+                  <h1 className="text-4xl md:text-5xl font-bold text-slate-900">
+                    AI-Powered Health Assistant
+                  </h1>
+                  <p className="mt-4 text-lg text-slate-600">
+                    Describe your symptoms for suggestions.
+                  </p>
+                </div>
+                <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200">
+                  <SymptomChecker
+                    symptoms={symptoms}
+                    setSymptoms={setSymptoms}
+                    onAnalyze={handleAnalyzeSymptoms}
+                    isLoading={isLoading}
+                  />
+                </div>
+                {error && (
+                  <div className="mt-6 text-center text-red-600 bg-red-100 p-4 rounded-lg">
+                    {error}
+                  </div>
+                )}
+                <div className="mt-10">
+                  <SpecialtySuggestions
+                    suggestions={suggestions}
+                    isLoading={isLoading}
+                  />
+                </div>
+                {filteredDoctors.length > 0 && (
+                  <div className="mt-12">
+                    <h2 className="text-3xl font-bold text-slate-900 mb-6 text-center">
+                      Recommended Doctors
+                    </h2>
+                    <DoctorList onSelectDoctor={handleSelectDoctor} />
+                  </div>
+                )}
+              </div>
+            }
+          />
+
+          <Route
+            path="/find-doctor"
+            element={<FindDoctorPage onSelectDoctor={handleSelectDoctor} />}
+          />
+
+          <Route path="/doctors/:id" element={<DoctorProfilePage />} />
+
+          <Route
+            path="/appointments"
+            element={
+              <AppointmentsPage
+                appointments={appointments.filter(
+                  (a) => a.patientId === currentUser?.id
+                )}
+                onStartConsultation={handleStartConsultation}
+                onInitiateReview={(apt) => setAppointmentToReview(apt)}
+                onViewMedicalRecord={handleViewMedicalRecord}
+                doctors={doctors}
+                currentUser={currentUser}
+              />
+            }
+          />
+
+          <Route
+            path="/chat"
+            element={
+              chatSession ? (
+                <ChatPage
+                  chatSession={chatSession}
+                  onNewChat={startNewChat}
+                  onLogInteraction={handleLogAiInteraction}
+                />
+              ) : (
+                <div />
+              )
+            }
+          />
+
+          <Route
+            path="/video-call"
+            element={
+              activeAppointment && currentUser ? (
+                <VideoCallPage
+                  appointment={activeAppointment}
+                  currentUser={currentUser}
+                  patient={
+                    users.find((u) => u.id === activeAppointment.patientId) ||
+                    null
+                  }
+                  onEndCall={handleEndCall}
+                  onFileUpload={handleFileUploadInCall}
+                />
+              ) : (
+                <p>Error: No active call.</p>
+              )
+            }
+          />
+
+          <Route
+            path="/about"
+            element={<AboutPage onStart={() => navigate("/symptoms")} />}
+          />
+
+          {/* DASHBOARDS */}
+          <Route
+            path="/dashboard"
+            element={
+              !currentUser ? (
+                <Navigate to="/" />
+              ) : (
+                <PatientDashboard
+                  currentUser={currentUser}
+                  appointments={appointments.filter(
+                    (a) => a.patientId === currentUser?.id
+                  )}
+                  notifications={userNotifications}
+                  onFindDoctor={() => navigate("/find-doctor")}
+                  onViewAppointments={() => navigate("/appointments")}
+                />
+              )
+            }
+          />
+
+          {/* --- DOCTOR ROUTES (SỬ DỤNG HÀM getCurrentDoctor CHO MỌI TRANG) --- */}
+          <Route
+            path="/doctor/dashboard"
+            element={(() => {
+              const currentDoctorForDash = getCurrentDoctor();
+              if (!currentDoctorForDash)
+                return (
+                  <p className="text-center mt-10">
+                    Đang tải thông tin bác sĩ...
+                  </p>
+                );
+
+              const revenue = appointments
+                .filter(
+                  (apt) =>
+                    apt.doctor.id === currentDoctorForDash?.id &&
+                    apt.status === "Đã hoàn thành"
+                )
+                .reduce((sum, apt) => sum + apt.doctor.consultationFee, 0);
+
+              // Map thêm tên bệnh nhân vào hồ sơ bệnh án để tránh lỗi
+              const safeMedicalHistory = medicalRecords.map((record) => {
+                const p = users.find((u) => u.id === record.patientId);
+                return { ...record, patientName: p ? p.name : "Unknown" };
+              });
+
+              return (
+                <DoctorDashboard
+                  doctor={currentDoctorForDash}
+                  appointments={appointments.filter(
+                    (a) => a.doctor.id === currentDoctorForDash?.id
+                  )}
+                  users={users}
+                  userNotifications={userNotifications.filter(
+                    (n) => n.type === "admin_alert"
+                  )}
+                  onStartConsultation={handleStartConsultation}
+                  onConfirmAppointment={handleConfirmAppointmentByDoctor}
+                  onCancelAppointment={handleCancelAppointmentByDoctor}
+                  onViewSchedule={() => navigate("/doctor-schedule")}
+                  totalRevenue={revenue}
+                  medicalHistory={safeMedicalHistory as any}
+                />
+              );
+            })()}
+          />
+
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminDashboard
+                users={users}
+                appointments={appointments}
+                doctors={doctors}
+                onInitiateAddDoctor={() => setIsAddDoctorModalOpen(true)}
+                knowledgeBase={knowledgeBase}
+                learningRequests={learningRequests}
+                onOpenKnowledgeModal={handleOpenKnowledgeModal}
+                onDeleteKnowledgeItem={handleDeleteKnowledgeItem}
+                onResolveLearningRequest={handleResolveLearningRequest}
+                onAdminViewPatientHistory={handleViewPatientHistory}
+                onInitiateUserEdit={(u) => setEditingUser(u)}
+                onDeleteUser={handleDeleteUser}
+                services={services}
+                onUpdateServicePrice={handleUpdateServicePrice}
+                onDeleteReview={handleDeleteReview}
+                aiInteractionLogs={aiInteractionLogs}
+                onSendHumanResponse={handleSendHumanResponse}
+                activities={activities}
+                onSendAdminNotification={handleSendAdminNotification}
+              />
+            }
+          />
+
+          {/* Doctor Management Routes - Dùng chung logic getCurrentDoctor */}
+          <Route
+            path="/doctor-schedule"
+            element={
+              currentUser && currentUser.role === "doctor" ? (
+                <DoctorScheduleManager
+                  // QUAN TRỌNG: Truyền User ID (ví dụ: 3) vào đây.
+                  // Component bên trong sẽ tự gọi API để tìm ra Doctor ID (ví dụ: 2).
+                  currentDoctorId={Number(currentUser.id)}
+                  onGoBack={() => navigate("/doctor/dashboard")}
+                />
+              ) : (
+                <div className="text-center mt-10">
+                  <p className="text-slate-500">
+                    Vui lòng đăng nhập bằng tài khoản Bác sĩ để truy cập.
+                  </p>
+                </div>
+              )
+            }
+          />
+
+          <Route
+            path="/doctor-profile-management"
+            element={(() => {
+              const doc = getCurrentDoctor();
+              if (!doc) return <p>Not found</p>;
+              return (
+                <DoctorProfileManagementPage
+                  doctor={doc}
+                  onUpdateProfile={handleUpdateDoctorProfile}
+                />
+              );
+            })()}
+          />
+
+          <Route
+            path="/patient-profile"
+            element={
+              currentUser ? (
+                <PatientProfilePage
+                  currentUser={currentUser}
+                  onUpdateProfile={handleUpdateUserProfile}
+                  appointments={appointments.filter(
+                    (a) => a.patientId === currentUser?.id
+                  )}
+                  onViewMedicalRecord={handleViewMedicalRecord}
+                  doctors={doctors}
+                />
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
+
+          {/* Consultation Flow Routes */}
+          <Route
+            path="/create-record"
+            element={
+              appointmentForRecord && consultationSummary ? (
+                <MedicalRecordForm
+                  appointment={appointmentForRecord}
+                  aiSummary={consultationSummary}
+                  isSummarizing={isSummarizing}
+                  onSave={handleSaveMedicalRecord}
+                  getIcd10Suggestions={getIcd10Suggestions}
+                />
+              ) : (
+                <p>Error: Missing data.</p>
+              )
+            }
+          />
+
+          <Route
+            path="/post-consultation"
+            element={
+              consultationSummary ? (
+                <PostConsultationPage
+                  summary={consultationSummary}
+                  isSummarizing={isSummarizing}
+                  onDone={() => navigate("/appointments")}
+                />
+              ) : (
+                <p>Loading...</p>
+              )
+            }
+          />
+        </Routes>
       </main>
       <Footer />
 
-      {/* Modals & Notifications */}
+      {/* GLOBAL MODALS */}
       {isLoginModalOpen && (
         <LoginModal
           onClose={() => setIsLoginModalOpen(false)}
           onLogin={(user) => {
             setCurrentUser(user);
             setIsLoginModalOpen(false);
-            if (user.role === "admin") {
-              setPage("adminDashboard");
-            } else if (user.role === "doctor") {
-              setPage("doctorDashboard");
-            } else {
-              setPage("patientDashboard");
-            }
+            if (user.role === "admin") navigate("/admin/dashboard");
+            else if (user.role === "doctor") navigate("/doctor/dashboard");
+            else navigate("/dashboard");
           }}
           users={users}
           doctors={doctors}
           onSignUp={handleSignUp}
         />
       )}
+
       {notification && (
         <NotificationToast
           message={notification}
