@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import type { Doctor } from "@/types/types";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import type { Doctor, TimeSlot } from "@/types/types";
 import { CalendarIcon } from "@/components/icons/CalendarIcon";
 import { ClockIcon } from "@/components/icons/ClockIcon";
 
@@ -7,24 +8,15 @@ interface BookingCalendarProps {
   doctor: Doctor;
   onBook: (
     doctor: Doctor,
-    slot: { date: string; time: string },
+    slot: { date: string; time: string; scheduleId: number },
     type: "online" | "offline"
   ) => void;
 }
 
-const availableSlots = [
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-];
+// ================= API CONFIG =================
+const API_BASE = "http://localhost:4421/api/v1";
 
+// ================= COMPONENT =================
 export const BookingCalendar: React.FC<BookingCalendarProps> = ({
   doctor,
   onBook,
@@ -35,16 +27,73 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({
     "online"
   );
 
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // ================= FORMAT DATE =================
+  const formattedDate = selectedDate.toISOString().split("T")[0];
+
+  // ================= fetch schedules =================
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("accessToken");
+
+        const res = await axios.get(`${API_BASE}/schedules/${doctor.id}`, {
+          params: { date: formattedDate },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = res.data.data || [];
+
+        const mapped: TimeSlot[] = data.map((item: any) => ({
+          id: item.id.toString(),
+          doctorId: item.doctorId,
+          date: item.date,
+          startTime: item.startTime.slice(0, 5),
+          endTime: item.endTime.slice(0, 5),
+          maxPatients: item.maxPatients,
+          bookedCount: item.bookedPatients || 0,
+          status:
+            item.bookedPatients >= item.maxPatients ? "full" : "available",
+          type: item.appointmentType,
+        }));
+
+        setSlots(mapped);
+      } catch (error) {
+        console.error("❌ Lỗi lấy khung giờ:", error);
+        setSlots([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchedules();
+  }, [doctor.id, formattedDate]);
+
+  // ================= handle booking =================
   const handleBooking = () => {
-    if (selectedTime) {
-      onBook(
-        doctor,
-        { date: selectedDate.toLocaleDateString("vi-VN"), time: selectedTime },
-        appointmentType
-      );
-    }
+    if (!selectedTime) return;
+
+    const selectedSlot = slots.find((s) => s.startTime === selectedTime);
+
+    if (!selectedSlot) return;
+
+    onBook(
+      doctor,
+      {
+        date: formattedDate,
+        time: selectedTime,
+        scheduleId: Number(selectedSlot.id), //  CỰC KỲ QUAN TRỌNG
+      },
+      appointmentType
+    );
   };
 
+  // ================= date change =================
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = e.target.valueAsDate;
     if (date) {
@@ -52,15 +101,22 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({
         date.getTime() + date.getTimezoneOffset() * 60000
       );
       setSelectedDate(adjustedDate);
+      setSelectedTime(null); // reset giờ khi đổi ngày
     }
   };
 
+  // ================= chia buổi =================
+  const morningSlots = slots.filter((s) => s.startTime < "12:00");
+  const afternoonSlots = slots.filter((s) => s.startTime >= "12:00");
+
+  // ================= UI =================
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 sticky top-28">
       <h3 className="text-xl font-bold text-slate-900 text-center mb-4">
         Đặt lịch hẹn
       </h3>
 
+      {/* ====== CHỌN NGÀY ====== */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-1">
           <CalendarIcon className="w-4 h-4 inline-block mr-2" />
@@ -69,12 +125,13 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({
         <input
           type="date"
           className="w-full p-2 border border-slate-300 rounded-md"
-          defaultValue={selectedDate.toISOString().split("T")[0]}
+          defaultValue={formattedDate}
           min={new Date().toISOString().split("T")[0]}
           onChange={handleDateChange}
         />
       </div>
 
+      {/* ====== HÌNH THỨC ====== */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-slate-700 mb-2">
           Hình thức khám
@@ -82,7 +139,7 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setAppointmentType("online")}
-            className={`p-2 rounded-md text-sm font-medium border-2 transition-colors ${
+            className={`p-2 rounded-md text-sm font-medium border-2 ${
               appointmentType === "online"
                 ? "bg-cyan-600 text-white border-cyan-600"
                 : "bg-white hover:bg-cyan-50"
@@ -92,7 +149,7 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({
           </button>
           <button
             onClick={() => setAppointmentType("offline")}
-            className={`p-2 rounded-md text-sm font-medium border-2 transition-colors ${
+            className={`p-2 rounded-md text-sm font-medium border-2 ${
               appointmentType === "offline"
                 ? "bg-cyan-600 text-white border-cyan-600"
                 : "bg-white hover:bg-cyan-50"
@@ -103,55 +160,70 @@ export const BookingCalendar: React.FC<BookingCalendarProps> = ({
         </div>
       </div>
 
+      {/* ====== GIỜ SÁNG ====== */}
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-2">
           <ClockIcon className="w-4 h-4 inline-block mr-2" />
           Chọn giờ (sáng)
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {availableSlots.slice(0, 5).map((time) => (
-            <button
-              key={time}
-              onClick={() => setSelectedTime(time)}
-              className={`p-2 rounded-md text-sm font-medium border-2 transition-colors ${
-                selectedTime === time
-                  ? "bg-cyan-600 text-white border-cyan-600"
-                  : "bg-white text-cyan-800 border-cyan-200 hover:bg-cyan-50"
-              }`}
-            >
-              {time}
-            </button>
-          ))}
-        </div>
+
+        {loading ? (
+          <p className="text-slate-500 text-sm">Đang tải...</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {morningSlots.map((slot) => (
+              <button
+                key={slot.id}
+                disabled={slot.status === "full"}
+                onClick={() => setSelectedTime(slot.startTime)}
+                className={`p-2 rounded-md text-sm font-medium border-2 ${
+                  selectedTime === slot.startTime
+                    ? "bg-cyan-600 text-white border-cyan-600"
+                    : "bg-white text-cyan-800 border-cyan-200 hover:bg-cyan-50"
+                } ${
+                  slot.status === "full" ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {slot.startTime}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* ====== GIỜ CHIỀU ====== */}
       <div className="mt-4">
         <label className="block text-sm font-medium text-slate-700 mb-2">
           <ClockIcon className="w-4 h-4 inline-block mr-2" />
           Chọn giờ (chiều)
         </label>
+
         <div className="grid grid-cols-3 gap-2">
-          {availableSlots.slice(5).map((time) => (
+          {afternoonSlots.map((slot) => (
             <button
-              key={time}
-              onClick={() => setSelectedTime(time)}
-              className={`p-2 rounded-md text-sm font-medium border-2 transition-colors ${
-                selectedTime === time
+              key={slot.id}
+              disabled={slot.status === "full"}
+              onClick={() => setSelectedTime(slot.startTime)}
+              className={`p-2 rounded-md text-sm font-medium border-2 ${
+                selectedTime === slot.startTime
                   ? "bg-cyan-600 text-white border-cyan-600"
                   : "bg-white text-cyan-800 border-cyan-200 hover:bg-cyan-50"
+              } ${
+                slot.status === "full" ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              {time}
+              {slot.startTime}
             </button>
           ))}
         </div>
       </div>
 
+      {/* ====== NÚT XÁC NHẬN ====== */}
       <div className="mt-6">
         <button
           onClick={handleBooking}
           disabled={!selectedTime}
-          className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors duration-300 focus:outline-none focus:ring-4 focus:ring-green-300"
+          className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
         >
           {selectedTime
             ? appointmentType === "online"

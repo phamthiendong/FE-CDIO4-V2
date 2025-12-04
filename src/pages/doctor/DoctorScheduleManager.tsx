@@ -24,11 +24,29 @@ const api = axios.create({
 });
 
 // INTERCEPTOR: Tự động gắn Token
+// DoctorScheduleManager.tsx
+
+// Sửa lại phần interceptor
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const isPublic =
+    config.url?.startsWith("/schedules/") && config.method === "get"; // ← CHỈ GET mới public
+
+  if (!isPublic) {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("🔑 Sending token:", token.substring(0, 20) + "...");
+    } else {
+      console.error("❌ No token found!");
+    }
   }
+
+  console.log("📤 Request:", {
+    method: config.method,
+    url: config.url,
+    hasAuth: !!config.headers.Authorization,
+  });
+
   return config;
 });
 
@@ -239,32 +257,37 @@ export const DoctorScheduleManager: React.FC<DoctorScheduleManagerProps> = ({
   // --- BƯỚC 1: TỰ ĐỘNG CHUYỂN USER ID -> DOCTOR ID ---
   useEffect(() => {
     const fetchRealDoctorId = async () => {
-      // Nếu UserID chưa có hoặc bị NaN thì thôi
       if (!currentDoctorId || isNaN(currentDoctorId)) return;
 
       try {
         setIsLoading(true);
-        // Gọi API lấy danh sách bác sĩ để tìm ID thật
         const response = await api.get("/doctors");
-        const doctorsList = response.data.data || response.data;
 
-        // Tìm bác sĩ có userId trùng với currentDoctorId (User ID) truyền vào
+        // ✅ Log để debug
+        console.log("📋 Danh sách doctors:", response.data);
+
+        const doctorsList = response.data.data || response.data;
         const myProfile = doctorsList.find(
-          (d: any) => d.userId === currentDoctorId
+          (d: any) => d.user?.id === currentDoctorId
         );
 
+        console.log("🎯 Kết quả tìm kiếm:", {
+          currentDoctorId,
+          found: myProfile,
+          allDoctors: doctorsList,
+        });
+
         if (myProfile) {
-          console.log("Đã tìm thấy Doctor ID thật:", myProfile.id);
           setRealDoctorId(myProfile.id);
         } else {
           console.error(
-            "Không tìm thấy hồ sơ bác sĩ cho User ID:",
+            "❌ Không tìm thấy doctor với userId:",
             currentDoctorId
           );
-          // Nếu không tìm thấy, có thể setRealDoctorId(null) hoặc thông báo lỗi
+          alert("Không tìm thấy thông tin bác sĩ!");
         }
       } catch (error) {
-        console.error("Lỗi khi tìm thông tin bác sĩ:", error);
+        console.error("❌ Lỗi khi fetch doctors:", error);
       } finally {
         setIsLoading(false);
       }
@@ -272,17 +295,16 @@ export const DoctorScheduleManager: React.FC<DoctorScheduleManagerProps> = ({
 
     fetchRealDoctorId();
   }, [currentDoctorId]);
-
   // --- BƯỚC 2: LẤY LỊCH KHÁM (Dựa trên realDoctorId) ---
   const fetchSchedules = useCallback(async () => {
     if (!realDoctorId) {
-      console.warn("⚠️ Không có realDoctorId, bỏ qua fetch");
+      console.warn("⚠️ Không có realDoctorId");
       return;
     }
 
     try {
       setIsLoading(true);
-      const dateStr = selectedDate.toLocaleDateString("en-CA"); // YYYY-MM-DD
+      const dateStr = selectedDate.toISOString().slice(0, 10);
 
       console.log("📡 Fetching schedules:", {
         realDoctorId,
@@ -294,35 +316,41 @@ export const DoctorScheduleManager: React.FC<DoctorScheduleManagerProps> = ({
         params: { date: dateStr },
       });
 
+      console.log("✅ Response:", response.data);
+
       const fetchedData = response.data.data || [];
-      console.log("✅ GET Response:", {
-        count: fetchedData.length,
-        data: fetchedData,
-      });
 
-      const mappedSlots: TimeSlot[] = Array.isArray(fetchedData)
-        ? fetchedData.map((item: any) => ({
-            id: item.id.toString(), // ← FIX: Convert to string
-            doctorId: item.doctorId,
-            date: item.date,
-            startTime: item.startTime,
-            endTime: item.endTime,
-            maxPatients: item.maxPatients,
-            bookedCount: item.bookedPatients || 0,
-            type: item.appointmentType || "offline",
-            status: "available",
-          }))
-        : [];
+      // ✅ Map dữ liệu
+      const mappedSlots: TimeSlot[] = fetchedData.map((item: any) => ({
+        id: item.id.toString(),
+        doctorId: item.doctorId,
+        date: item.date,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        maxPatients: item.maxPatients,
+        bookedCount: item.bookedPatients || 0,
+        type: item.appointmentType,
+        status: "available",
+      }));
 
-      console.log("✅ Mapped slots:", mappedSlots);
       setSlots(
         mappedSlots.sort((a, b) => a.startTime.localeCompare(b.startTime))
       );
     } catch (error: any) {
-      console.error("❌ Error fetching schedules:", error);
-      // Không throw error, chỉ set rỗng
+      console.error("❌ Error:", {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        data: error.response?.data,
+      });
+
+      // ✅ Chỉ set rỗng khi 404, các lỗi khác thông báo
       if (error.response?.status === 404) {
         setSlots([]);
+      } else {
+        alert(
+          "Lỗi khi tải lịch: " +
+            (error.response?.data?.message || error.message)
+        );
       }
     } finally {
       setIsLoading(false);
@@ -441,10 +469,12 @@ export const DoctorScheduleManager: React.FC<DoctorScheduleManagerProps> = ({
   }, [weekDays]);
 
   const filteredSlots = useMemo(() => {
-    const dateStr = selectedDate.toISOString().split("T")[0];
-    return slots.filter(
-      (slot) => slot.date === dateStr || slot.date.startsWith(dateStr)
-    );
+    const dateStr = selectedDate.toISOString().slice(0, 10);
+
+    return slots.filter((slot) => {
+      const slotDate = slot.date.slice(0, 10);
+      return slotDate === dateStr;
+    });
   }, [slots, selectedDate]);
 
   const morningSlots = filteredSlots.filter((s) => s.startTime < "12:00:00");

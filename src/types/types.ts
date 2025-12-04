@@ -121,17 +121,34 @@ export interface Appointment {
     | "Đã hủy"
     | "Chờ xác nhận"
     | "Đã xác nhận"
+    | "Đang diễn ra"
     | "Hoàn thành";
   type: "online" | "offline";
   price?: number;
   medicalRecordId?: string;
+
+  duration?: number;
+}
+// types.ts
+
+interface SePayResponse {
+  qrUrl: string;
+  amount: number;
+  orderCode: string;
+  bankInfo: {
+    bankCode: string;
+    accountNumber: string;
+    accountName: string;
+    transferContent: string;
+  };
 }
 
 export interface PendingAppointment {
-  doctor: Doctor;
   date: string;
   time: string;
   type: "online" | "offline";
+  doctor: Doctor;
+  payment?: SePayResponse;
 }
 
 export interface NewDoctorData {
