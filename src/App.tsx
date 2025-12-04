@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 // 1. Import React Router
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 
@@ -24,7 +24,6 @@ import { PatientDashboard } from "@/pages/patient/PatientDashboard";
 import { PatientProfilePage } from "@/pages/patient/PatientProfilePage";
 import { PostConsultationPage } from "@/pages/consultation/PostConsultationPage";
 import { VideoCallPage } from "@/pages/consultation/VideoCallPage";
-
 // Feature Components
 import { LoginModal } from "@/features/authentication/components/LoginModal";
 import { PaymentModal } from "@/features/booking/components/PaymentModal";
@@ -73,6 +72,7 @@ import type {
   RecentActivity,
   MedicalHistoryRecord,
 } from "@/types/types";
+import { jwtDecode } from "jwt-decode";
 
 // Init AI
 let ai: GoogleGenAI | null = null;
@@ -117,6 +117,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [pendingBookingId, setPendingBookingId] = useState<number | null>(null);
   const [pendingAppointment, setPendingAppointment] =
     useState<PendingAppointment | null>(null);
   const [appointmentToReview, setAppointmentToReview] =
@@ -147,7 +148,31 @@ export default function App() {
   >([]);
 
   const isLoggedIn = !!currentUser;
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    const userStr = localStorage.getItem("user");
 
+    if (token && userStr) {
+      try {
+        const decoded: any = jwtDecode(token);
+
+        // ✅ Token hết hạn → logout
+        if (decoded.exp * 1000 < Date.now()) {
+          console.warn("Token đã hết hạn");
+          handleLogout();
+          return;
+        }
+
+        // ✅ Token còn hạn → restore user
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        console.log("✅ Auto login success:", user);
+      } catch (err) {
+        console.error("Token lỗi:", err);
+        handleLogout();
+      }
+    }
+  }, []);
   // --- QUAN TRỌNG: Hàm lấy thông tin Bác sĩ dùng chung cho mọi trang ---
   // Hàm này đảm bảo các trang Dashboard, Lịch, Profile đều nhận được dữ liệu
   const getCurrentDoctor = useCallback((): Doctor | null => {
@@ -240,53 +265,102 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     navigate("/");
   };
 
   const handleSelectDoctor = (doctor: Doctor) => {
-    setSelectedDoctor(doctor);
-    navigate("/doctor-profile");
+    navigate(`/doctors/${doctor.id}`);
   };
 
-  const handleBookAppointment = (
+  // Trong file App.tsx
+  // Trong App.tsx
+
+  const handleBookAppointment = async (
     doctor: Doctor,
-    slot: { date: string; time: string },
+    slot: { date: string; time: string; scheduleId: number },
     type: "online" | "offline"
   ) => {
-    if (!isLoggedIn) {
-      setIsLoginModalOpen(true);
-      return;
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      // Ép kiểu scheduleId sang số để tránh lỗi 400 Bad Request
+      const payload = {
+        scheduleId: Number(slot.scheduleId),
+        note: "Tôi muốn khám sớm",
+      };
+
+      const res = await fetch("http://localhost:4421/api/v1/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+
+      // ✅ TRƯỜNG HỢP 1: ONLINE -> CẦN THANH TOÁN (Status 402)
+      if (res.status === 402 && json?.data?.payment) {
+        setPendingBookingId(json.data.booking.id);
+        setPendingAppointment({
+          doctor,
+          date: slot.date,
+          time: slot.time,
+          type: "online",
+          payment: json.data.payment,
+        });
+        return;
+      }
+
+      // ✅ TRƯỜNG HỢP 2: THÀNH CÔNG (Offline - Status 200/201)
+      if (res.ok) {
+        // 1. Tạo đối tượng lịch hẹn mới để hiển thị ngay (Optimistic UI)
+        // Lưu ý: Cần map đúng các trường dữ liệu
+        const newAppointmentForUI: Appointment = {
+          id: json.data?.booking?.id?.toString() || `temp-${Date.now()}`, // Lấy ID từ response hoặc tạo tạm
+          patientId: currentUser?.id || "",
+          doctor: doctor,
+          date: slot.date,
+          time: slot.time,
+          type: type,
+          status: "Chờ xác nhận", //  QUAN TRỌNG: Status này để hiện màu vàng bên User & hiện nút Confirm bên Doctor
+        };
+
+        // 2. Cập nhật vào danh sách chung
+        setAppointments((prev) => [...prev, newAppointmentForUI]);
+
+        setNotification("✅ Đã gửi yêu cầu! Vui lòng chờ bác sĩ xác nhận.");
+        navigate("/appointments");
+      } else {
+        // Xử lý lỗi từ backend trả về
+        const msg = json.message || json.error || "Lỗi không xác định";
+        setNotification(`❌ Đặt lịch thất bại: ${msg}`);
+      }
+    } catch (err) {
+      console.error("Lỗi đặt lịch:", err);
+      setNotification("❌ Lỗi kết nối hệ thống.");
     }
-    setPendingAppointment({ doctor, date: slot.date, time: slot.time, type });
   };
+  // Trong App.tsx
 
-  const handleConfirmBooking = () => {
-    if (pendingAppointment && currentUser) {
-      const newAppointment: Appointment = {
-        id: `apt${Date.now()}`,
-        patientId: currentUser.id,
-        doctor: pendingAppointment.doctor,
-        date: pendingAppointment.date,
-        time: pendingAppointment.time,
-        type: pendingAppointment.type,
-        status: "Chờ xác nhận",
-      };
-      setAppointments((prev) => [...prev, newAppointment]);
-      setPendingAppointment(null);
-      setNotification(
-        `Yêu cầu đặt hẹn với ${pendingAppointment.doctor.name} đã được gửi.`
-      );
-      navigate("/appointments");
+  const handleConfirmBooking = async (bookingId: number) => {
+    await fetch(
+      `http://localhost:4421/api/v1/bookings/test-success/${bookingId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
+    );
 
-      const newActivity: RecentActivity = {
-        id: `act-${Date.now()}`,
-        type: "new_appointment",
-        message: `${currentUser.name} đã đặt lịch hẹn với ${pendingAppointment.doctor.name}.`,
-        timestamp: new Date().toISOString(),
-      };
-      setActivities((prev) => [newActivity, ...prev]);
-    }
+    setNotification("✅ Thanh toán thành công! Lịch hẹn đã được xác nhận.");
+    setPendingAppointment(null);
+    setPendingBookingId(null);
+    navigate("/appointments");
   };
 
   const handleSignUp = (name: string, email: string) => {
@@ -587,20 +661,59 @@ export default function App() {
     );
     setNotification("Hồ sơ của bạn đã được cập nhật.");
   };
-  const handleConfirmAppointmentByDoctor = (id: string) => {
-    setAppointments((prev) =>
-      prev.map((apt) =>
-        apt.id === id ? { ...apt, status: "Đã xác nhận" } : apt
-      )
-    );
-    setNotification("Lịch hẹn đã được xác nhận.");
+  // --- LOGIC BÁC SĨ XÁC NHẬN ---
+  const handleConfirmAppointmentByDoctor = async (id: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      // Gọi API Confirm
+      await fetch(`http://localhost:4421/api/v1/bookings/${id}/confirm`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Cập nhật State Frontend ngay lập tức
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === id ? { ...apt, status: "Đã xác nhận" } : apt
+        )
+      );
+      setNotification("✅ Đã xác nhận lịch hẹn!");
+    } catch (err) {
+      console.error(err);
+      setNotification("❌ Lỗi khi xác nhận.");
+    }
   };
-  const handleCancelAppointmentByDoctor = (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy lịch hẹn này không?")) {
+
+  // --- LOGIC BÁC SĨ TỪ CHỐI / HỦY ---
+  const handleCancelAppointmentByDoctor = async (
+    id: string,
+    reason: string
+  ) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      // Kiểm tra trạng thái để gọi API Reject hay Cancel
+      const targetApt = appointments.find((a) => a.id === id);
+      const isPending = targetApt?.status === "Chờ xác nhận";
+      const action = isPending ? "reject" : "cancel"; // Endpoint backend
+
+      await fetch(`http://localhost:4421/api/v1/bookings/${id}/${action}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      // Cập nhật State Frontend
       setAppointments((prev) =>
         prev.map((apt) => (apt.id === id ? { ...apt, status: "Đã hủy" } : apt))
       );
-      setNotification("Lịch hẹn đã được hủy.");
+      setNotification(`✅ Đã ${isPending ? "từ chối" : "hủy"} lịch hẹn.`);
+    } catch (err) {
+      console.error(err);
+      setNotification("❌ Lỗi khi hủy lịch.");
     }
   };
   const handleUpdateServicePrice = (specialty: Specialty, newPrice: number) => {
@@ -829,7 +942,10 @@ export default function App() {
             element={<FindDoctorPage onSelectDoctor={handleSelectDoctor} />}
           />
 
-          <Route path="/doctors/:id" element={<DoctorProfilePage />} />
+          <Route
+            path="/doctors/:id"
+            element={<DoctorProfilePage onBook={handleBookAppointment} />}
+          />
 
           <Route
             path="/appointments"
@@ -908,47 +1024,37 @@ export default function App() {
           />
 
           {/* --- DOCTOR ROUTES (SỬ DỤNG HÀM getCurrentDoctor CHO MỌI TRANG) --- */}
+          {/* --- DOCTOR ROUTES --- */}
           <Route
             path="/doctor/dashboard"
             element={(() => {
               const currentDoctorForDash = getCurrentDoctor();
-              if (!currentDoctorForDash)
+
+              if (!currentDoctorForDash) {
                 return (
-                  <p className="text-center mt-10">
+                  <div className="text-center p-10">
                     Đang tải thông tin bác sĩ...
-                  </p>
+                  </div>
                 );
-
-              const revenue = appointments
-                .filter(
-                  (apt) =>
-                    apt.doctor.id === currentDoctorForDash?.id &&
-                    apt.status === "Đã hoàn thành"
-                )
-                .reduce((sum, apt) => sum + apt.doctor.consultationFee, 0);
-
-              // Map thêm tên bệnh nhân vào hồ sơ bệnh án để tránh lỗi
-              const safeMedicalHistory = medicalRecords.map((record) => {
-                const p = users.find((u) => u.id === record.patientId);
-                return { ...record, patientName: p ? p.name : "Unknown" };
-              });
+              }
 
               return (
                 <DoctorDashboard
                   doctor={currentDoctorForDash}
+                  // Lọc lịch hẹn của bác sĩ này
                   appointments={appointments.filter(
-                    (a) => a.doctor.id === currentDoctorForDash?.id
+                    (a) => a.doctor.id === currentDoctorForDash.id
                   )}
                   users={users}
-                  userNotifications={userNotifications.filter(
-                    (n) => n.type === "admin_alert"
-                  )}
-                  onStartConsultation={handleStartConsultation}
+                  userNotifications={userNotifications}
+                  // 👇👇👇 GẮN 2 HÀM NÀY VÀO ĐÂY ĐỂ NÚT BẤM HIỆN RA 👇👇👇
                   onConfirmAppointment={handleConfirmAppointmentByDoctor}
                   onCancelAppointment={handleCancelAppointmentByDoctor}
+                  // Các props khác
+                  onStartConsultation={handleStartConsultation}
                   onViewSchedule={() => navigate("/doctor-schedule")}
-                  totalRevenue={revenue}
-                  medicalHistory={safeMedicalHistory as any}
+                  totalRevenue={0} // Hoặc biến revenue bạn đã tính
+                  medicalHistory={[]}
                 />
               );
             })()}
@@ -1094,13 +1200,18 @@ export default function App() {
           onClose={() => setNotification(null)}
         />
       )}
-      {pendingAppointment && (
+      {pendingAppointment && pendingBookingId !== null && (
         <PaymentModal
           appointment={pendingAppointment}
-          onClose={() => setPendingAppointment(null)}
-          onConfirm={handleConfirmBooking}
+          bookingId={pendingBookingId}
+          onClose={() => {
+            setPendingAppointment(null);
+            setPendingBookingId(null);
+          }}
+          onConfirm={(id) => handleConfirmBooking(id)}
         />
       )}
+
       {appointmentToReview && (
         <ReviewModal
           appointment={appointmentToReview}
